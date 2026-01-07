@@ -55,12 +55,51 @@ Your main pages remain indexed, and Google focuses its resources where they matt
 
 ## Configuration
 
-After installation, go to **Modules > ML Google SEO NoIndex** to:
+After installation, go to **Modules > Module Manager**, search for "ML Google SEO NoIndex" and click **Configure**.
 
-1. Enable/disable the module globally
-2. Choose which page types should be noindexed
-3. Add custom URL parameters if needed
-4. Optionally enable HTTP header output for stricter crawler compliance
+### General Settings
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| **Enable Module** | Master switch to turn on/off all noindex functionality | Enabled |
+| **Use HTTP Header** | Also sends `X-Robots-Tag: noindex, follow` HTTP header in addition to the meta tag. Some crawlers prefer headers over meta tags. | Disabled |
+
+### Standard PrestaShop Parameters
+
+| Option | What it does | Default |
+|--------|--------------|---------|
+| **Pagination** | Adds noindex to paginated pages (`?page=2`, `?p=3`, etc.) | Enabled |
+| **Order & Sort** | Adds noindex when products are sorted (`?order=price`, `?orderby=name`) | Enabled |
+| **Currency** | Adds noindex when currency is changed (`?id_currency=2`) | Enabled |
+| **Search Results** | Adds noindex to search result pages (`?s=keyword`, `?search_query=`) | Enabled |
+| **Price Range Filters** | Adds noindex to price-filtered pages (`?price_min=10&price_max=50`) | Enabled |
+| **Items Per Page** | Adds noindex when items per page is changed (`?n=48`) | Enabled |
+
+### Filter Module Integration
+
+These options appear automatically when the corresponding module is installed:
+
+| Option | When it appears | What it does |
+|--------|-----------------|--------------|
+| **PS Faceted Search** | When `ps_facetedsearch` is active | Adds noindex to attribute/feature filter combinations |
+| **AmazingFilter** | When `amazzingfilter` is active | Adds noindex to AmazingFilter URLs (`/f-color-blue/`, `?af=`) |
+
+### Advanced Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| **Tracking Parameters** | Adds noindex to URLs with UTM or ad platform parameters (`utm_source`, `gclid`, `fbclid`, etc.). **Disable this if you already use canonical tags** — they handle tracking parameters better. | Disabled |
+| **Custom Parameters** | Add your own URL parameters that should trigger noindex. Enter one parameter per line, without `?` or `=`. Example: `my_custom_filter` | Empty |
+
+### Recommended Configuration
+
+For most stores, the default settings work well:
+
+1. ✅ Keep **Enable Module** on
+2. ✅ Keep all **Standard Parameters** enabled
+3. ✅ Enable **PS Faceted Search** or **AmazingFilter** if you use them
+4. ❌ Leave **Tracking Parameters** disabled (canonical tags handle these better)
+5. ➕ Add any custom filter parameters your theme uses
 
 ## Best Practices
 

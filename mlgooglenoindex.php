@@ -76,7 +76,7 @@ class Mlgooglenoindex extends Module
         Configuration::updateValue(self::CONFIG_PS_FACETED, true);
         Configuration::updateValue(self::CONFIG_AMAZINGFILTER, true);
         Configuration::updateValue(self::CONFIG_TRACKING_PARAMS, false);
-        Configuration::updateValue(self::CONFIG_USE_HTTP_HEADER, false);
+        Configuration::updateValue(self::CONFIG_USE_HTTP_HEADER, true);
         Configuration::updateValue(self::CONFIG_CUSTOM_PARAMS, '');
 
         return parent::install()
@@ -150,11 +150,21 @@ class Mlgooglenoindex extends Module
             $output .= $this->displayConfirmation($this->l('Settings updated successfully.'));
         }
 
+        // Header info template variables
         $this->context->smarty->assign([
             'module_dir' => $this->_path,
+            'module_display_name' => $this->displayName,
+            'module_description' => $this->description,
+            'module_version' => $this->version,
+            'documentation_url' => 'https://2win.agency/docs/mlgooglenoindex',
+            'support_url' => 'https://addons.prestashop.com/en/contact-us?id_product=123456',
+            'rate_url' => 'https://addons.prestashop.com/en/ratings.php',
             'amazingfilter_installed' => $this->isAmazingFilterEnabled(),
             'ps_faceted_installed' => $this->isPsFacetedSearchEnabled(),
         ]);
+
+        // Add header info panel
+        $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/header_info.tpl');
 
         $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/configure.tpl');
 

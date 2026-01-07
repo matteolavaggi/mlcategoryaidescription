@@ -51,7 +51,7 @@ function upgrade_module_1_2_0($module)
     Configuration::updateValue('MLGOOGLENOINDEX_ITEMS_PER_PAGE', true);
     Configuration::updateValue('MLGOOGLENOINDEX_PS_FACETED', true);
     Configuration::updateValue('MLGOOGLENOINDEX_TRACKING_PARAMS', false); // Disabled by default - optional feature
-    Configuration::updateValue('MLGOOGLENOINDEX_USE_HTTP_HEADER', false); // Disabled by default
+    Configuration::updateValue('MLGOOGLENOINDEX_USE_HTTP_HEADER', true); // Enabled by default
 
     return true;
 }

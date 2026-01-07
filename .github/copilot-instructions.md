@@ -200,6 +200,63 @@ curl -s "https://site.com/category?page=2" | grep -i "noindex"
 - Use `{if isset($var) && $var}` for conditional display
 - **2win.agency license header required** (see above)
 
+## Module Configuration Header (Reusable)
+
+Every 2win.agency module MUST include the `header_info.tpl` template in the configuration page. This provides consistent branding and support links.
+
+### Template Location
+Copy `views/templates/admin/header_info.tpl` to your new module.
+
+### Integration in getContent()
+```php
+public function getContent()
+{
+    $output = '';
+
+    // Handle form submission
+    if ((bool) Tools::isSubmit('submitYourModuleModule') == true) {
+        $this->postProcess();
+        $output .= $this->displayConfirmation($this->l('Settings updated successfully.'));
+    }
+
+    // Header info template variables (REQUIRED)
+    $this->context->smarty->assign([
+        'module_dir' => $this->_path,
+        'module_display_name' => $this->displayName,
+        'module_description' => $this->description,
+        'module_version' => $this->version,
+        'documentation_url' => 'https://2win.agency/docs/YOUR_MODULE_NAME',
+        'support_url' => 'https://addons.prestashop.com/en/contact-us?id_product=YOUR_PRODUCT_ID',
+        'rate_url' => 'https://addons.prestashop.com/en/ratings.php', // optional
+    ]);
+
+    // Add header info panel FIRST
+    $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/header_info.tpl');
+
+    // Then add your module-specific templates
+    $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/configure.tpl');
+
+    return $output . $this->renderForm();
+}
+```
+
+### Variables Reference
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `module_display_name` | Yes | Module name shown in header |
+| `module_description` | No | Short module description |
+| `module_version` | No | Version number displayed |
+| `documentation_url` | Yes | Link to module documentation |
+| `support_url` | Yes | Link to PrestaShop Addons support |
+| `rate_url` | No | Link to rate the module |
+
+### Update Translation Calls
+After copying the template, update all `mod='mlgooglenoindex'` to your module's technical name:
+```bash
+sed -i "s/mod='mlgooglenoindex'/mod='your_module_name'/g" views/templates/admin/header_info.tpl
+```
+
 ### Commits
 Follow conventional commits: `feat:`, `fix:`, `docs:`, `refactor:` (see [commit-message.md](instructions/commit-message.md))
 
