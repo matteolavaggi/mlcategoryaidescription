@@ -1,10 +1,25 @@
 # Apache 2.2
 <IfModule !mod_authz_core.c>
-    Order deny,allow
-    Deny from all
+    <Files *.php>
+        Order deny,allow
+        Deny from all
+    </Files>
 </IfModule>
 
 # Apache 2.4
 <IfModule mod_authz_core.c>
-    Require all denied
+    <Files *.php>
+        Require all denied
+    </Files>
 </IfModule>
+
+# Allow access to static assets
+<FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|ico)$">
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Allow from all
+    </IfModule>
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+</FilesMatch>

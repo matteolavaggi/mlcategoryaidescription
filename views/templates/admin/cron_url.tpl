@@ -1,5 +1,4 @@
-<?php
-/**
+{*
  * 2010-2026 2win.agency
  *
  * NOTICE OF LICENSE
@@ -18,13 +17,10 @@
  * @copyright 2010-2026 2win.agency
  * @license   Valid for 1 website (or project) for each purchase of license
  *            International Registered Trademark & Property of 2win.agency
- */
-header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
-header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+ *}
 
-header('Cache-Control: no-store, no-cache, must-revalidate');
-header('Cache-Control: post-check=0, pre-check=0', false);
-header('Pragma: no-cache');
-
-header('Location: ../');
-exit;
+<div class="alert alert-info">
+	<strong>{$cron_label|escape:'htmlall':'UTF-8'}</strong><br>
+	<code>{$cron_url|escape:'htmlall':'UTF-8'}</code><br><br>
+	{$cron_desc|escape:'htmlall':'UTF-8'}
+</div>

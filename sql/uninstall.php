@@ -1,6 +1,6 @@
 <?php
 /**
- * 2010-2025 2win.agency
+ * 2010-2026 2win.agency
  *
  * NOTICE OF LICENSE
  *
@@ -15,7 +15,7 @@
  * needs please contact us for extra customization service at an affordable price
  *
  * @author    2win.agency
- * @copyright 2010-2025 2win.agency
+ * @copyright 2010-2026 2win.agency
  * @license   Valid for 1 website (or project) for each purchase of license
  *            International Registered Trademark & Property of 2win.agency
  */
@@ -23,5 +23,22 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-// No tables to drop for this module - it only uses Configuration
+$sql = [];
+
+// Only drop job and log tables on uninstall
+// Keep configuration and prompt templates for reinstall
+$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_generation_log`';
+$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_job_queue`';
+
+// Uncomment the following lines if you want to completely remove all data:
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`';
+
+foreach ($sql as $query) {
+    Db::getInstance()->execute($query);
+}
+
+// Note: Configuration values (API key, settings) are NOT deleted.
+// To completely remove, use: Configuration::deleteByName('MLCATEGORYAI_...');
+
 return true;

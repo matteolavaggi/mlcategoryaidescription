@@ -1,146 +1,199 @@
 {*
-* 2007-2026 PrestaShop
-*
-* NOTICE OF LICENSE
-*
-* This source file is subject to the Academic Free License (AFL 3.0)
-* that is bundled with this package in the file LICENSE.txt.
-* It is also available through the world-wide-web at this URL:
-* http://opensource.org/licenses/afl-3.0.php
-* If you did not receive a copy of the license and are unable to
-* obtain it through the world-wide-web, please send an email
-* to license@prestashop.com so we can send you a copy immediately.
-*
-* DISCLAIMER
-*
-* Do not edit or add to this file if you wish to upgrade PrestaShop to newer
-* versions in the future. If you wish to customize PrestaShop for your
-* needs please refer to http://www.prestashop.com for more information.
-*
-*  @author    PrestaShop SA <contact@prestashop.com>
-*  @copyright 2007-2026 PrestaShop SA
-*  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
-*}
+ * 2010-2026 2win.agency
+ *
+ * NOTICE OF LICENSE
+ *
+ * This file is not open source! Each license that you purchased is only available for 1 wesite only.
+ * If you want to use this file on more websites (or projects), you need to purchase additional licenses.
+ * You are not allowed to redistribute, resell, lease, license, sub-license or offer our resources to any third party.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
+ * versions in the future. If you wish to customize PrestaShop for your
+ * needs please contact us for extra customization service at an affordable price
+ *
+ * @author    2win.agency
+ * @copyright 2010-2026 2win.agency
+ * @license   Valid for 1 website (or project) for each purchase of license
+ *            International Registered Trademark & Property of 2win.agency
+ *}
 
-<div class="panel">
-	<h3><i class="icon icon-shield"></i> {l s='ML Google SEO NoIndex' mod='mlgooglenoindex'}</h3>
-	<p>
-		<strong>{l s='Optimize your Google crawl budget!' mod='mlgooglenoindex'}</strong><br />
-		{l s='This module adds' mod='mlgooglenoindex'} <code>&lt;meta name="robots" content="noindex,follow"&gt;</code> {l s='to filtered and paginated pages.' mod='mlgooglenoindex'}
-	</p>
-	<br />
-	<div class="alert alert-info">
-		<p><strong>{l s='How it works:' mod='mlgooglenoindex'}</strong></p>
-		<ul>
-			<li><strong>{l s='Pagination:' mod='mlgooglenoindex'}</strong> {l s='Pages with ?page=2+ or ?p=2+ will be noindexed' mod='mlgooglenoindex'}</li>
-			<li><strong>{l s='Order & Sort:' mod='mlgooglenoindex'}</strong> {l s='Product ordering and sorting parameters will trigger noindex' mod='mlgooglenoindex'}</li>
-			<li><strong>{l s='Currency:' mod='mlgooglenoindex'}</strong> {l s='Currency change parameters will trigger noindex' mod='mlgooglenoindex'}</li>
-			<li><strong>{l s='Search:' mod='mlgooglenoindex'}</strong> {l s='Search result pages will be noindexed' mod='mlgooglenoindex'}</li>
-			<li><strong>{l s='Price Filters:' mod='mlgooglenoindex'}</strong> {l s='Price range filter parameters will trigger noindex' mod='mlgooglenoindex'}</li>
-			<li><strong>{l s='Items Per Page:' mod='mlgooglenoindex'}</strong> {l s='Product count per page parameters will trigger noindex' mod='mlgooglenoindex'}</li>
-			<li><strong>{l s='Tracking:' mod='mlgooglenoindex'}</strong> {l s='UTM and ad platform tracking parameters (optional)' mod='mlgooglenoindex'}</li>
-			<li><strong>{l s='Custom:' mod='mlgooglenoindex'}</strong> {l s='Add your own parameters to trigger noindex' mod='mlgooglenoindex'}</li>
-		</ul>
+{* Batch Generation Panel *}
+<div class="panel" id="mlcategoryai-batch-panel">
+	<h3><i class="icon icon-magic"></i> {l s='AI Content Generation' mod='mlcategoryaidescription'}</h3>
+
+	{* Current Job Status *}
+	{if $current_job}
+	<div class="alert alert-warning" id="mlcategoryai-current-job">
+		<p><strong>{l s='Job in Progress' mod='mlcategoryaidescription'}</strong></p>
+		<p>
+			{l s='Status:' mod='mlcategoryaidescription'} <span id="job-status">{$current_job.status|escape:'htmlall':'UTF-8'}</span><br>
+			{l s='Progress:' mod='mlcategoryaidescription'} <span id="job-progress">{$current_job.processed_items|escape:'htmlall':'UTF-8'}</span> / <span id="job-total">{$current_job.total_items|escape:'htmlall':'UTF-8'}</span>
+		</p>
+		<div class="progress" style="margin-bottom: 15px;">
+			<div class="progress-bar" role="progressbar" id="job-progress-bar"
+				style="width: {if $current_job.total_items > 0}{$current_job.processed_items / $current_job.total_items * 100|intval}{else}0{/if}%">
+			</div>
+		</div>
+		<button type="button" class="btn btn-warning" id="btn-pause-job" data-job-id="{$current_job.id_job|escape:'htmlall':'UTF-8'}">
+			<i class="icon icon-pause"></i> {l s='Pause' mod='mlcategoryaidescription'}
+		</button>
+		<button type="button" class="btn btn-success" id="btn-resume-job" data-job-id="{$current_job.id_job|escape:'htmlall':'UTF-8'}" style="display:none;">
+			<i class="icon icon-play"></i> {l s='Resume' mod='mlcategoryaidescription'}
+		</button>
+		<button type="button" class="btn btn-danger" id="btn-cancel-job" data-job-id="{$current_job.id_job|escape:'htmlall':'UTF-8'}">
+			<i class="icon icon-times"></i> {l s='Cancel' mod='mlcategoryaidescription'}
+		</button>
+	</div>
+	{/if}
+
+	{* New Job Form *}
+	<div id="mlcategoryai-new-job-form" {if $current_job}style="display:none;"{/if}>
+		<div class="row">
+			<div class="col-lg-6">
+				<div class="form-group">
+					<label class="control-label">{l s='Select Categories' mod='mlcategoryaidescription'}</label>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" id="select-all-categories">
+							<strong>{l s='Select All' mod='mlcategoryaidescription'}</strong>
+						</label>
+					</div>
+					<select id="category-select" class="form-control" multiple size="10">
+						{foreach from=$categories item=category}
+						<option value="{$category.id_category|escape:'htmlall':'UTF-8'}">
+							{$category.name|escape:'htmlall':'UTF-8'}
+						</option>
+						{/foreach}
+					</select>
+					<p class="help-block">{l s='Hold Ctrl/Cmd to select multiple categories' mod='mlcategoryaidescription'}</p>
+				</div>
+			</div>
+			<div class="col-lg-6">
+				<div class="form-group">
+					<label class="control-label">{l s='Select Languages' mod='mlcategoryaidescription'}</label>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" id="select-all-languages" checked>
+							<strong>{l s='Select All' mod='mlcategoryaidescription'}</strong>
+						</label>
+					</div>
+					{foreach from=$languages item=lang}
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" name="languages[]" value="{$lang.id_lang|escape:'htmlall':'UTF-8'}" class="lang-checkbox" checked>
+							{$lang.name|escape:'htmlall':'UTF-8'}
+						</label>
+					</div>
+					{/foreach}
+				</div>
+
+				<div class="form-group">
+					<label class="control-label">{l s='Fields to Generate' mod='mlcategoryaidescription'}</label>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" name="fields[]" value="description" class="field-checkbox" checked>
+							{l s='Description' mod='mlcategoryaidescription'}
+						</label>
+					</div>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" name="fields[]" value="meta_title" class="field-checkbox" checked>
+							{l s='Meta Title' mod='mlcategoryaidescription'}
+						</label>
+					</div>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" name="fields[]" value="meta_description" class="field-checkbox" checked>
+							{l s='Meta Description' mod='mlcategoryaidescription'}
+						</label>
+					</div>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" name="fields[]" value="meta_keywords" class="field-checkbox">
+							{l s='Meta Keywords' mod='mlcategoryaidescription'}
+						</label>
+					</div>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" name="fields[]" value="link_rewrite" class="field-checkbox">
+							{l s='Friendly URL (SEO slug)' mod='mlcategoryaidescription'}
+						</label>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="control-label">{l s='Write Mode' mod='mlcategoryaidescription'}</label>
+					<select id="write-mode-select" class="form-control">
+						<option value="fill_missing">{l s='Fill missing only - Keep existing content' mod='mlcategoryaidescription'}</option>
+						<option value="overwrite">{l s='Overwrite - Replace all content' mod='mlcategoryaidescription'}</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<div class="panel-footer">
+			<button type="button" class="btn btn-primary" id="btn-start-generation">
+				<i class="icon icon-rocket"></i> {l s='Start Generation' mod='mlcategoryaidescription'}
+			</button>
+			<button type="button" class="btn btn-default" id="btn-test-api">
+				<i class="icon icon-plug"></i> {l s='Test API Connection' mod='mlcategoryaidescription'}
+			</button>
+		</div>
+	</div>
+
+	{* Progress Display (shown during generation) *}
+	<div id="mlcategoryai-progress" style="display:none;">
+		<div class="progress">
+			<div class="progress-bar progress-bar-striped active" role="progressbar" id="generation-progress-bar" style="width: 0%">
+				<span id="generation-progress-text">0%</span>
+			</div>
+		</div>
+		<div id="generation-log" class="well" style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+		</div>
 	</div>
 </div>
 
-<div class="row">
-	<div class="col-lg-6">
-		{if isset($ps_faceted_installed) && $ps_faceted_installed}
-		<div class="alert alert-success">
-			<i class="icon icon-check"></i> 
-			<strong>{l s='PS Faceted Search Detected!' mod='mlgooglenoindex'}</strong><br />
-			{l s='The native PrestaShop Faceted Search module is active. You can enable noindex for filtered pages.' mod='mlgooglenoindex'}
-		</div>
-		{else}
-		<div class="alert alert-warning">
-			<i class="icon icon-warning"></i> 
-			<strong>{l s='PS Faceted Search Not Detected' mod='mlgooglenoindex'}</strong><br />
-			{l s='The native ps_facetedsearch module is not installed or not active.' mod='mlgooglenoindex'}
-		</div>
-		{/if}
-	</div>
-	<div class="col-lg-6">
-		{if isset($amazingfilter_installed) && $amazingfilter_installed}
-		<div class="alert alert-success">
-			<i class="icon icon-check"></i> 
-			<strong>{l s='AmazingFilter Detected!' mod='mlgooglenoindex'}</strong><br />
-			{l s='The AmazingFilter module is installed and active. You can enable noindex for filtered pages.' mod='mlgooglenoindex'}
-		</div>
-		{else}
-		<div class="alert alert-warning">
-			<i class="icon icon-warning"></i> 
-			<strong>{l s='AmazingFilter Not Detected' mod='mlgooglenoindex'}</strong><br />
-			{l s='The AmazingFilter module is not installed or not active.' mod='mlgooglenoindex'}
-		</div>
-		{/if}
-	</div>
-</div>
-
+{* Placeholder Reference Panel *}
 <div class="panel">
-	<h3><i class="icon icon-tags"></i> {l s='Parameter Reference' mod='mlgooglenoindex'}</h3>
-	<p>{l s='The following URL patterns will trigger noindex when their respective options are enabled:' mod='mlgooglenoindex'}</p>
-	<table class="table table-bordered">
+	<h3><i class="icon icon-info-circle"></i> {l s='Available Placeholders' mod='mlcategoryaidescription'}</h3>
+	<p>{l s='Use these placeholders in your prompt templates. They will be replaced with actual data at generation time.' mod='mlcategoryaidescription'}</p>
+	<table class="table table-bordered table-striped">
 		<thead>
 			<tr>
-				<th style="width: 25%">{l s='Option' mod='mlgooglenoindex'}</th>
-				<th>{l s='Parameters / Patterns' mod='mlgooglenoindex'}</th>
+				<th>{l s='Placeholder' mod='mlcategoryaidescription'}</th>
+				<th>{l s='Description' mod='mlcategoryaidescription'}</th>
+				<th>{l s='Example' mod='mlcategoryaidescription'}</th>
 			</tr>
 		</thead>
 		<tbody>
-			<tr>
-				<td><strong>{l s='Pagination' mod='mlgooglenoindex'}</strong></td>
-				<td><code>?page=2+</code>, <code>?p=2+</code></td>
-			</tr>
-			<tr>
-				<td><strong>{l s='Order & Sort' mod='mlgooglenoindex'}</strong></td>
-				<td><code>?order=*</code>, <code>?orderby=*</code>, <code>?orderway=*</code></td>
-			</tr>
-			<tr>
-				<td><strong>{l s='Currency' mod='mlgooglenoindex'}</strong></td>
-				<td><code>?id_currency=*</code>, <code>?SubmitCurrency</code></td>
-			</tr>
-			<tr>
-				<td><strong>{l s='Search' mod='mlgooglenoindex'}</strong></td>
-				<td><code>?s=*</code>, <code>?q=*</code>, <code>?search_query=*</code>, <code>controller=search</code></td>
-			</tr>
-			<tr>
-				<td><strong>{l s='Price Filters' mod='mlgooglenoindex'}</strong></td>
-				<td><code>?from=*</code>, <code>?to=*</code>, <code>?price_min=*</code>, <code>?price_max=*</code></td>
-			</tr>
-			<tr>
-				<td><strong>{l s='Items Per Page' mod='mlgooglenoindex'}</strong></td>
-				<td><code>?n=*</code>, <code>?resultsPerPage=*</code></td>
-			</tr>
-			{if isset($ps_faceted_installed) && $ps_faceted_installed}
-			<tr>
-				<td><strong>{l s='PS Faceted Search' mod='mlgooglenoindex'}</strong></td>
-				<td><code>?id_attribute_group=*</code>, <code>?id_feature=*</code>, {l s='attribute/feature URL patterns' mod='mlgooglenoindex'}</td>
-			</tr>
-			{/if}
-			{if isset($amazingfilter_installed) && $amazingfilter_installed}
-			<tr>
-				<td><strong>{l s='AmazingFilter' mod='mlgooglenoindex'}</strong></td>
-				<td><code>/f-*</code>, <code>?af=*</code>, <code>?from-xhr</code></td>
-			</tr>
-			{/if}
-			<tr>
-				<td><strong>{l s='Tracking Params' mod='mlgooglenoindex'}</strong></td>
-				<td><code>?utm_*</code>, <code>?gclid</code>, <code>?fbclid</code>, <code>?msclkid</code>, <code>?twclid</code>, <code>?li_fat_id</code>, <code>?mc_cid</code>, <code>?mc_eid</code>, <code>?dclid</code></td>
-			</tr>
+			<tr><td><code>{literal}{category_name}{/literal}</code></td><td>{l s='Category name in target language' mod='mlcategoryaidescription'}</td><td>Men's Shoes</td></tr>
+			<tr><td><code>{literal}{category_description}{/literal}</code></td><td>{l s='Current category description' mod='mlcategoryaidescription'}</td><td>Browse our collection...</td></tr>
+			<tr><td><code>{literal}{category_meta_title}{/literal}</code></td><td>{l s='Current meta title' mod='mlcategoryaidescription'}</td><td>Men's Shoes - MyShop</td></tr>
+			<tr><td><code>{literal}{category_meta_description}{/literal}</code></td><td>{l s='Current meta description' mod='mlcategoryaidescription'}</td><td>Shop the best...</td></tr>
+			<tr><td><code>{literal}{category_meta_keywords}{/literal}</code></td><td>{l s='Current meta keywords' mod='mlcategoryaidescription'}</td><td>shoes, mens, footwear</td></tr>
+			<tr><td><code>{literal}{category_link_rewrite}{/literal}</code></td><td>{l s='Current friendly URL slug' mod='mlcategoryaidescription'}</td><td>mens-shoes</td></tr>
+			<tr><td><code>{literal}{parent_category_name}{/literal}</code></td><td>{l s='Parent category name' mod='mlcategoryaidescription'}</td><td>Footwear</td></tr>
+			<tr><td><code>{literal}{site_name}{/literal}</code></td><td>{l s='Shop name' mod='mlcategoryaidescription'}</td><td>MyShop</td></tr>
+			<tr><td><code>{literal}{site_description}{/literal}</code></td><td>{l s='Shop meta description' mod='mlcategoryaidescription'}</td><td>Your online store...</td></tr>
+			<tr><td><code>{literal}{product_count}{/literal}</code></td><td>{l s='Number of products in category' mod='mlcategoryaidescription'}</td><td>42</td></tr>
+			<tr><td><code>{literal}{first_products:N}{/literal}</code></td><td>{l s='First N products from category' mod='mlcategoryaidescription'}</td><td>{literal}{first_products:10}{/literal}</td></tr>
+			<tr><td><code>{literal}{random_products:N}{/literal}</code></td><td>{l s='N random products from category' mod='mlcategoryaidescription'}</td><td>{literal}{random_products:5}{/literal}</td></tr>
+			<tr><td><code>{literal}{language_code}{/literal}</code></td><td>{l s='Target language ISO code (auto-injected)' mod='mlcategoryaidescription'}</td><td>en, fr, de</td></tr>
+			<tr><td><code>{literal}{language_name}{/literal}</code></td><td>{l s='Target language name (auto-injected)' mod='mlcategoryaidescription'}</td><td>English, Français</td></tr>
 		</tbody>
 	</table>
 </div>
 
-<div class="panel">
-	<h3><i class="icon icon-lightbulb-o"></i> {l s='SEO Best Practices' mod='mlgooglenoindex'}</h3>
-	<div class="alert alert-info">
-		<ul style="margin-bottom: 0;">
-			<li>{l s='This module uses' mod='mlgooglenoindex'} <code>noindex,follow</code> {l s='to prevent duplicate content while preserving link equity.' mod='mlgooglenoindex'}</li>
-			<li>{l s='Tracking parameters are disabled by default - enable only if you don\'t use canonical tags.' mod='mlgooglenoindex'}</li>
-			<li>{l s='The HTTP Header option adds X-Robots-Tag which some crawlers prefer over meta tags.' mod='mlgooglenoindex'}</li>
-			<li>{l s='Monitor Google Search Console for changes in crawl stats after enabling this module.' mod='mlgooglenoindex'}</li>
-		</ul>
-	</div>
-</div>
+{* Initialize JavaScript with AJAX configuration *}
+<script type="text/javascript">
+	// Set global variables for the back.js script
+	window.mlcategoryai_ajax_url = '{$ajax_url|escape:'javascript':'UTF-8'}';
+	window.mlcategoryai_token = '{$ajax_token|escape:'javascript':'UTF-8'}';
+	
+	console.log('ML Category AI: Config loaded', {
+		ajax_url: window.mlcategoryai_ajax_url,
+		token_set: !!window.mlcategoryai_token
+	});
+</script>

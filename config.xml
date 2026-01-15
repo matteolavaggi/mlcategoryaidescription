@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <module>
-	<name>mlgooglenoindex</name>
-	<displayName><![CDATA[ML Google SEO NoIndex]]></displayName>
+	<name>mlcategoryaidescription</name>
+	<displayName><![CDATA[ML Category AI Description]]></displayName>
 	<version><![CDATA[1.2.0]]></version>
-	<description><![CDATA[This module enhances Google crawl budget handling, noindex in pagination, and filters results for stores with a big catalog.]]></description>
+	<description><![CDATA[Generate category descriptions, meta titles and meta descriptions using AI (OpenAI compatible).]]></description>
 	<author><![CDATA[2win.agency]]></author>
-	<tab><![CDATA[seo]]></tab>
+	<tab><![CDATA[administration]]></tab>
 	<is_configurable>1</is_configurable>
 	<need_instance>0</need_instance>
 </module>

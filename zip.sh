@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the module name (must be lowercase alphanumeric and underscores only)
-MODULE_NAME="mlgooglenoindex"
+MODULE_NAME="mlcategoryaidescription"
 
 # Get the absolute path of the parent directory
 PARENT_DIR=$(dirname "$(pwd)")

@@ -1,27 +1,82 @@
 /**
-* 2007-2026 PrestaShop
-*
-* NOTICE OF LICENSE
-*
-* This source file is subject to the Academic Free License (AFL 3.0)
-* that is bundled with this package in the file LICENSE.txt.
-* It is also available through the world-wide-web at this URL:
-* http://opensource.org/licenses/afl-3.0.php
-* If you did not receive a copy of the license and are unable to
-* obtain it through the world-wide-web, please send an email
-* to license@prestashop.com so we can send you a copy immediately.
-*
-* DISCLAIMER
-*
-* Do not edit or add to this file if you wish to upgrade PrestaShop to newer
-* versions in the future. If you wish to customize PrestaShop for your
-* needs please refer to http://www.prestashop.com for more information.
-*
-*  @author    PrestaShop SA <contact@prestashop.com>
-*  @copyright 2007-2026 PrestaShop SA
-*  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
-*
-* Don't forget to prefix your containers with your own identifier
-* to avoid any conflicts with others containers.
-*/
+ * 2010-2026 2win.agency
+ *
+ * NOTICE OF LICENSE
+ *
+ * This file is not open source! Each license that you purchased is only available for 1 wesite only.
+ * If you want to use this file on more websites (or projects), you need to purchase additional licenses.
+ * You are not allowed to redistribute, resell, lease, license, sub-license or offer our resources to any third party.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
+ * versions in the future. If you wish to customize PrestaShop for your
+ * needs please contact us for extra customization service at an affordable price
+ *
+ * @author    2win.agency
+ * @copyright 2010-2026 2win.agency
+ * @license   Valid for 1 website (or project) for each purchase of license
+ *            International Registered Trademark & Property of 2win.agency
+ */
+
+/**
+ * ML Category AI Description - Back Office Styles
+ */
+
+/* Batch Panel */
+#mlcategoryai-batch-panel .form-group {
+    margin-bottom: 20px;
+}
+
+#mlcategoryai-batch-panel select[multiple] {
+    min-height: 250px;
+}
+
+/* Progress display */
+#mlcategoryai-progress .progress {
+    height: 25px;
+    margin-bottom: 15px;
+}
+
+#mlcategoryai-progress .progress-bar {
+    line-height: 25px;
+    font-size: 14px;
+}
+
+#generation-log {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Job status panel */
+#mlcategoryai-current-job .progress {
+    height: 20px;
+}
+
+#mlcategoryai-current-job .progress-bar {
+    background-color: #5bc0de;
+    line-height: 20px;
+}
+
+/* Placeholder table */
+#mlcategoryai-batch-panel + .panel table code {
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+/* Animation for processing */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+.mlcategoryai-processing {
+    animation: pulse 1.5s ease-in-out infinite;
+}

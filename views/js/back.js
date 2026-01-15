@@ -1,27 +1,375 @@
 /**
-* 2007-2026 PrestaShop
-*
-* NOTICE OF LICENSE
-*
-* This source file is subject to the Academic Free License (AFL 3.0)
-* that is bundled with this package in the file LICENSE.txt.
-* It is also available through the world-wide-web at this URL:
-* http://opensource.org/licenses/afl-3.0.php
-* If you did not receive a copy of the license and are unable to
-* obtain it through the world-wide-web, please send an email
-* to license@prestashop.com so we can send you a copy immediately.
-*
-* DISCLAIMER
-*
-* Do not edit or add to this file if you wish to upgrade PrestaShop to newer
-* versions in the future. If you wish to customize PrestaShop for your
-* needs please refer to http://www.prestashop.com for more information.
-*
-*  @author    PrestaShop SA <contact@prestashop.com>
-*  @copyright 2007-2026 PrestaShop SA
-*  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
-*
-* Don't forget to prefix your containers with your own identifier
-* to avoid any conflicts with others containers.
-*/
+ * 2010-2026 2win.agency
+ *
+ * NOTICE OF LICENSE
+ *
+ * This file is not open source! Each license that you purchased is only available for 1 wesite only.
+ * If you want to use this file on more websites (or projects), you need to purchase additional licenses.
+ * You are not allowed to redistribute, resell, lease, license, sub-license or offer our resources to any third party.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
+ * versions in the future. If you wish to customize PrestaShop for your
+ * needs please contact us for extra customization service at an affordable price
+ *
+ * @author    2win.agency
+ * @copyright 2010-2026 2win.agency
+ * @license   Valid for 1 website (or project) for each purchase of license
+ *            International Registered Trademark & Property of 2win.agency
+ */
+
+/**
+ * ML Category AI Description - Back Office JavaScript
+ */
+(function () {
+    'use strict';
+
+    var MlCategoryAi = {
+        ajaxUrl: null,
+        token: null,
+        currentJobId: null,
+        isProcessing: false,
+
+        init: function () {
+            this.ajaxUrl = window.mlcategoryai_ajax_url || '';
+            this.token = window.mlcategoryai_token || '';
+
+            this.bindEvents();
+            this.checkExistingJob();
+        },
+
+        bindEvents: function () {
+            var self = this;
+
+            // Start generation button
+            document.getElementById('btn-start-generation')?.addEventListener('click', function () {
+                self.startGeneration();
+            });
+
+            // Test API button
+            document.getElementById('btn-test-api')?.addEventListener('click', function () {
+                self.testApiConnection();
+            });
+
+            // Pause job button
+            document.getElementById('btn-pause-job')?.addEventListener('click', function () {
+                var jobId = this.getAttribute('data-job-id');
+                self.pauseJob(jobId);
+            });
+
+            // Resume job button
+            document.getElementById('btn-resume-job')?.addEventListener('click', function () {
+                var jobId = this.getAttribute('data-job-id');
+                self.resumeJob(jobId);
+            });
+
+            // Cancel job button
+            document.getElementById('btn-cancel-job')?.addEventListener('click', function () {
+                var jobId = this.getAttribute('data-job-id');
+                if (confirm('Are you sure you want to cancel this job?')) {
+                    self.cancelJob(jobId);
+                }
+            });
+
+            // Select all categories
+            document.getElementById('select-all-categories')?.addEventListener('change', function () {
+                var select = document.getElementById('category-select');
+                if (select) {
+                    Array.from(select.options).forEach(function (option) {
+                        option.selected = this.checked;
+                    }, this);
+                }
+            });
+
+            // Select all languages
+            document.getElementById('select-all-languages')?.addEventListener('change', function () {
+                var checkboxes = document.querySelectorAll('.lang-checkbox');
+                checkboxes.forEach(function (cb) {
+                    cb.checked = this.checked;
+                }, this);
+            });
+        },
+
+        checkExistingJob: function () {
+            var jobPanel = document.getElementById('mlcategoryai-current-job');
+            if (jobPanel) {
+                var pauseBtn = document.getElementById('btn-pause-job');
+                var resumeBtn = document.getElementById('btn-resume-job');
+                var statusSpan = document.getElementById('job-status');
+
+                if (statusSpan && statusSpan.textContent === 'paused') {
+                    pauseBtn.style.display = 'none';
+                    resumeBtn.style.display = 'inline-block';
+                }
+
+                // Auto-resume if running
+                if (statusSpan && statusSpan.textContent === 'running') {
+                    var jobId = pauseBtn.getAttribute('data-job-id');
+                    this.currentJobId = jobId;
+                    this.processNextBatch();
+                }
+            }
+        },
+
+        startGeneration: function () {
+            var self = this;
+
+            // Collect selected categories
+            var categorySelect = document.getElementById('category-select');
+            var categoryIds = Array.from(categorySelect.selectedOptions).map(function (opt) {
+                return opt.value;
+            });
+
+            if (categoryIds.length === 0) {
+                alert('Please select at least one category');
+                return;
+            }
+
+            // Collect selected languages
+            var langCheckboxes = document.querySelectorAll('.lang-checkbox:checked');
+            var languageIds = Array.from(langCheckboxes).map(function (cb) {
+                return cb.value;
+            });
+
+            if (languageIds.length === 0) {
+                alert('Please select at least one language');
+                return;
+            }
+
+            // Collect selected fields
+            var fieldCheckboxes = document.querySelectorAll('.field-checkbox:checked');
+            var fields = Array.from(fieldCheckboxes).map(function (cb) {
+                return cb.value;
+            });
+
+            if (fields.length === 0) {
+                alert('Please select at least one field to generate');
+                return;
+            }
+
+            var writeMode = document.getElementById('write-mode-select').value;
+
+            // Create job
+            this.ajaxRequest('createJob', {
+                category_ids: categoryIds,
+                language_ids: languageIds,
+                fields: fields,
+                write_mode: writeMode
+            }, function (response) {
+                if (response.success) {
+                    self.currentJobId = response.job_id;
+                    self.showProgress();
+                    self.log('Job created with ID: ' + response.job_id);
+                    self.log('Starting generation...');
+                    self.processNextBatch();
+                } else {
+                    alert('Error: ' + response.error);
+                }
+            });
+        },
+
+        processNextBatch: function () {
+            var self = this;
+
+            if (!this.currentJobId) {
+                return;
+            }
+
+            this.isProcessing = true;
+
+            this.ajaxRequest('processJob', {
+                job_id: this.currentJobId
+            }, function (response) {
+                if (response.success) {
+                    self.updateProgress(response.progress_percent || 0, response.processed, response.total);
+
+                    // Log batch results
+                    if (response.batch_results) {
+                        response.batch_results.forEach(function (result) {
+                            if (result.skipped) {
+                                self.log('⏭ Skipped: Category ' + result.id_category + ', Lang ' + result.id_lang + ', ' + result.field_type);
+                            } else if (result.success) {
+                                self.log('✓ Generated: Category ' + result.id_category + ', Lang ' + result.id_lang + ', ' + result.field_type);
+                            } else {
+                                self.log('✗ Error: Category ' + result.id_category + ' - ' + result.error);
+                            }
+                        });
+                    }
+
+                    if (response.completed) {
+                        self.isProcessing = false;
+                        self.log('');
+                        self.log('=== Generation Complete ===');
+                        self.log('Total processed: ' + response.processed);
+                        self.log('Total failed: ' + response.failed);
+                        self.updateProgress(100, response.processed, response.total);
+                        alert('Generation complete!\n\nProcessed: ' + response.processed + '\nFailed: ' + response.failed);
+                        location.reload();
+                    } else {
+                        // Continue with next batch
+                        setTimeout(function () {
+                            self.processNextBatch();
+                        }, 500);
+                    }
+                } else {
+                    self.isProcessing = false;
+                    self.log('Error: ' + response.error);
+                    alert('Error processing batch: ' + response.error);
+                }
+            });
+        },
+
+        pauseJob: function (jobId) {
+            var self = this;
+
+            this.ajaxRequest('pauseJob', { job_id: jobId }, function (response) {
+                if (response.success) {
+                    self.isProcessing = false;
+                    document.getElementById('btn-pause-job').style.display = 'none';
+                    document.getElementById('btn-resume-job').style.display = 'inline-block';
+                    document.getElementById('job-status').textContent = 'paused';
+                    self.log('Job paused');
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            });
+        },
+
+        resumeJob: function (jobId) {
+            var self = this;
+
+            this.ajaxRequest('resumeJob', { job_id: jobId }, function (response) {
+                if (response.success) {
+                    document.getElementById('btn-pause-job').style.display = 'inline-block';
+                    document.getElementById('btn-resume-job').style.display = 'none';
+                    document.getElementById('job-status').textContent = 'running';
+                    self.currentJobId = jobId;
+                    self.log('Job resumed');
+                    self.processNextBatch();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            });
+        },
+
+        cancelJob: function (jobId) {
+            var self = this;
+
+            this.ajaxRequest('cancelJob', { job_id: jobId }, function (response) {
+                if (response.success) {
+                    self.isProcessing = false;
+                    self.log('Job cancelled');
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            });
+        },
+
+        testApiConnection: function () {
+            var self = this;
+            var btn = document.getElementById('btn-test-api');
+            var originalHtml = btn.innerHTML;
+
+            btn.innerHTML = '<i class="icon icon-spinner icon-spin"></i> Testing...';
+            btn.disabled = true;
+
+            this.ajaxRequest('testConnection', {}, function (response) {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+
+                if (response.success) {
+                    alert('✓ API connection successful!');
+                } else {
+                    alert('✗ API connection failed:\n\n' + response.message);
+                }
+            });
+        },
+
+        showProgress: function () {
+            document.getElementById('mlcategoryai-new-job-form').style.display = 'none';
+            document.getElementById('mlcategoryai-progress').style.display = 'block';
+        },
+
+        updateProgress: function (percent, processed, total) {
+            var progressBar = document.getElementById('generation-progress-bar');
+            var progressText = document.getElementById('generation-progress-text');
+
+            if (progressBar) {
+                progressBar.style.width = percent + '%';
+            }
+            if (progressText) {
+                progressText.textContent = percent + '% (' + processed + '/' + total + ')';
+            }
+
+            // Also update the job panel if visible
+            var jobProgressBar = document.getElementById('job-progress-bar');
+            var jobProgress = document.getElementById('job-progress');
+            var jobTotal = document.getElementById('job-total');
+
+            if (jobProgressBar) {
+                jobProgressBar.style.width = percent + '%';
+            }
+            if (jobProgress) {
+                jobProgress.textContent = processed;
+            }
+            if (jobTotal) {
+                jobTotal.textContent = total;
+            }
+        },
+
+        log: function (message) {
+            var logDiv = document.getElementById('generation-log');
+            if (logDiv) {
+                var timestamp = new Date().toLocaleTimeString();
+                logDiv.innerHTML += '[' + timestamp + '] ' + message + '\n';
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        },
+
+        ajaxRequest: function (action, data, callback) {
+            var self = this;
+            var formData = new FormData();
+
+            formData.append('action', action);
+            formData.append('token', this.token);
+
+            // Add data fields
+            Object.keys(data).forEach(function (key) {
+                var value = data[key];
+                if (Array.isArray(value)) {
+                    value.forEach(function (item) {
+                        formData.append(key + '[]', item);
+                    });
+                } else {
+                    formData.append(key, value);
+                }
+            });
+
+            fetch(this.ajaxUrl, {
+                method: 'POST',
+                body: formData
+            })
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (callback) {
+                        callback(data);
+                    }
+                })
+                .catch(function (error) {
+                    console.error('AJAX Error:', error);
+                    if (callback) {
+                        callback({ success: false, error: error.message });
+                    }
+                });
+        }
+    };
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function () {
+        MlCategoryAi.init();
+    });
+})();
