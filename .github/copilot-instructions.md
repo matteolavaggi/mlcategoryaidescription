@@ -12,6 +12,7 @@ See `.github/instructions/` for comprehensive guidelines:
 - [presatshop-validation.md](instructions/presatshop-validation.md) - Marketplace validation rules
 - [commit-message.md](instructions/commit-message.md) - Conventional commits format
 - [html-css-template-standard.md](instructions/html-css-template-standard.md) - Template standards
+- [Usage of prestashop cli](instructions/ps-cli-command.instructions.md) - How to use prestashop cli in dev
 
 ## PHP Coding Standards (CRITICAL)
 

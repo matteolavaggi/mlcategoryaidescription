@@ -53,6 +53,14 @@ Conventional commit format for consistent version control:
 - Breaking change indicators
 - Examples and rules
 
+## 📝 Development
+
+### [Usage of prestashop cli](./ps-cli-command.instructions.md.mdc)
+How to upgrade, install, uninstall module from cli and clear cache
+- path of dev prestashop
+- command for bash, git bash, powershell
+- php version to use
+
 ## 🎯 Quick Reference
 
 | Rule | Purpose | Applies To |
