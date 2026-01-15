@@ -533,6 +533,9 @@ Requisiti:
         // Add module-specific templates
         $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/configure.tpl');
 
+        // Add API benchmark tool
+        $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/api_benchmark.tpl');
+
         // Add performance stats panel
         $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/performance_stats.tpl');
 

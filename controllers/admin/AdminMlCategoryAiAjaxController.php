@@ -100,12 +100,81 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
                     $this->handlePreviewPrompt();
                     break;
 
+                case 'benchmarkModel':
+                    $this->handleBenchmarkModel();
+                    break;
+
                 default:
                     $this->jsonResponse(['success' => false, 'error' => 'Unknown action: ' . $action]);
             }
         } catch (Exception $e) {
             $this->jsonResponse(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Benchmark a specific model with minimal prompt
+     */
+    protected function handleBenchmarkModel()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiClient.php';
+
+        $model = Tools::getValue('model');
+        $prompt = Tools::getValue('prompt', 'Say hello');
+
+        if (empty($model)) {
+            $this->jsonResponse(['success' => false, 'error' => 'Model name required']);
+
+            return;
+        }
+
+        // Create client with custom model (use configured API key and endpoint)
+        $apiKey = Configuration::get(Mlcategoryaidescription::CONFIG_API_KEY);
+        $endpoint = Configuration::get(Mlcategoryaidescription::CONFIG_API_ENDPOINT);
+        $provider = Configuration::get(Mlcategoryaidescription::CONFIG_API_PROVIDER);
+
+        // Decrypt API key
+        $apiKey = $this->module->decryptApiKey($apiKey);
+
+        if (empty($apiKey)) {
+            $this->jsonResponse(['success' => false, 'error' => 'API key not configured']);
+
+            return;
+        }
+
+        $client = new MlCategoryAiClient(
+            $apiKey,
+            $endpoint ?: 'https://api.openai.com/v1',
+            $provider ?: 'openai',
+            $model,
+            0, // No max tokens limit for benchmark
+            0.7
+        );
+
+        $startTime = microtime(true);
+        $result = $client->generate($prompt);
+        $endTime = microtime(true);
+
+        $latencyMs = round(($endTime - $startTime) * 1000);
+
+        if ($result === false) {
+            $this->jsonResponse([
+                'success' => false,
+                'error' => $client->getLastError(),
+                'latency_ms' => $latencyMs,
+            ]);
+
+            return;
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'content' => $result,
+            'latency_ms' => $latencyMs,
+            'tokens_in' => $client->getLastInputTokens(),
+            'tokens_out' => $client->getLastOutputTokens(),
+            'model' => $model,
+        ]);
     }
 
     /**
