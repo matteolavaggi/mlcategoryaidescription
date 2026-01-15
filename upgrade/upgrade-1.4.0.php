@@ -77,13 +77,13 @@ function upgrade_module_1_4_0($module)
     // Check if prompts need updating (old format detection)
     $idTemplate = (int) $db->getValue(
         'SELECT id_prompt_template FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`
-        WHERE field_type = "description" LIMIT 1'
+        WHERE field_type = "description"'
     );
 
     if ($idTemplate) {
         $existingPrompt = $db->getValue(
             'SELECT prompt_template FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang`
-            WHERE id_prompt_template = ' . $idTemplate . ' LIMIT 1'
+            WHERE id_prompt_template = ' . $idTemplate
         );
 
         // Check if it's the old format (doesn't contain "CONTEXT INFORMATION")
