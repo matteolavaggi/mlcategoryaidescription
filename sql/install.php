@@ -93,6 +93,30 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_prompt_tem
     PRIMARY KEY (`id_prompt_template`, `id_lang`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
 
+// Performance metrics table - lightweight execution stats
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_run_stats` (
+    `id_run` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `id_job` INT(11) UNSIGNED DEFAULT NULL,
+    `id_shop` INT(11) UNSIGNED NOT NULL DEFAULT 1,
+    `started_at` DATETIME NOT NULL,
+    `completed_at` DATETIME DEFAULT NULL,
+    `execution_time_ms` INT(11) UNSIGNED DEFAULT NULL,
+    `categories_count` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `languages_count` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `fields_count` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `items_processed` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `items_skipped` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `items_failed` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `write_mode` VARCHAR(20) NOT NULL DEFAULT "fill_missing",
+    `tokens_input` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `tokens_output` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `parallel_requests` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    `avg_request_time_ms` INT(11) UNSIGNED DEFAULT NULL,
+    PRIMARY KEY (`id_run`),
+    KEY `idx_started` (`started_at`),
+    KEY `idx_job` (`id_job`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
+
 foreach ($sql as $query) {
     if (!Db::getInstance()->execute($query)) {
         return false;

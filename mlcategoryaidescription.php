@@ -42,6 +42,7 @@ class Mlcategoryaidescription extends Module
     const CONFIG_MAX_TOKENS = 'MLCATEGORYAI_MAX_TOKENS';
     const CONFIG_TEMPERATURE = 'MLCATEGORYAI_TEMPERATURE';
     const CONFIG_REQUEST_DELAY = 'MLCATEGORYAI_REQUEST_DELAY';
+    const CONFIG_PARALLEL_REQUESTS = 'MLCATEGORYAI_PARALLEL_REQUESTS';
 
     /**
      * Cron Settings Keys
@@ -80,7 +81,7 @@ class Mlcategoryaidescription extends Module
     {
         $this->name = 'mlcategoryaidescription';
         $this->tab = 'administration';
-        $this->version = '1.2.0';
+        $this->version = '1.2.1';
         $this->author = '2win.agency';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -116,6 +117,7 @@ class Mlcategoryaidescription extends Module
             self::CONFIG_REQUEST_DELAY => 1,
             self::CONFIG_CRON_ENABLED => false,
             self::CONFIG_CRON_TOKEN => Tools::passwdGen(32),
+            self::CONFIG_PARALLEL_REQUESTS => true,
         ];
 
         foreach ($defaults as $key => $defaultValue) {

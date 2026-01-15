@@ -64,9 +64,29 @@ class MlCategoryAiClient
     protected $lastError = '';
 
     /**
-     * @var int Last tokens used
+     * @var int Last tokens used (total for last operation)
      */
     protected $lastTokensUsed = 0;
+
+    /**
+     * @var int Last input tokens used
+     */
+    protected $lastInputTokens = 0;
+
+    /**
+     * @var int Last output tokens used
+     */
+    protected $lastOutputTokens = 0;
+
+    /**
+     * @var int Last request time in milliseconds
+     */
+    protected $lastRequestTimeMs = 0;
+
+    /**
+     * @var bool Enable prompt caching (OpenAI feature)
+     */
+    protected $enablePromptCache = true;
 
     /**
      * Constructor
@@ -123,13 +143,17 @@ class MlCategoryAiClient
      *
      * @param string $prompt The prompt to send
      * @param string $systemMessage Optional system message
+     * @param string $cacheKey Optional cache key for prompt caching (field type)
      *
      * @return string|false Response text or false on error
      */
-    public function generate($prompt, $systemMessage = '')
+    public function generate($prompt, $systemMessage = '', $cacheKey = '')
     {
         $this->lastError = '';
         $this->lastTokensUsed = 0;
+        $this->lastInputTokens = 0;
+        $this->lastOutputTokens = 0;
+        $this->lastRequestTimeMs = 0;
 
         if (empty($this->apiKey)) {
             $this->lastError = 'API key is not configured';
@@ -157,6 +181,12 @@ class MlCategoryAiClient
             'max_tokens' => $this->maxTokens,
             'temperature' => $this->temperature,
         ];
+
+        // Add prompt caching for OpenAI (reduces input token costs by up to 50%)
+        if ($this->enablePromptCache && $this->provider === 'openai' && !empty($cacheKey)) {
+            $requestData['prompt_cache_key'] = 'mlcategoryai-' . $cacheKey;
+        }
+
 
         $url = $this->buildUrl();
         $response = $this->sendRequest($url, $requestData);
@@ -198,6 +228,7 @@ class MlCategoryAiClient
     protected function sendRequest($url, $data)
     {
         $headers = $this->buildHeaders();
+        $startTime = microtime(true);
 
         $ch = curl_init();
 
@@ -217,6 +248,9 @@ class MlCategoryAiClient
         $curlError = curl_error($ch);
 
         curl_close($ch);
+
+        // Track request time
+        $this->lastRequestTimeMs = (int) ((microtime(true) - $startTime) * 1000);
 
         if ($curlError) {
             $this->lastError = 'cURL error: ' . $curlError;
@@ -280,9 +314,11 @@ class MlCategoryAiClient
      */
     protected function parseResponse($response)
     {
-        // Track token usage
-        if (isset($response['usage']['total_tokens'])) {
-            $this->lastTokensUsed = (int) $response['usage']['total_tokens'];
+        // Track token usage (detailed)
+        if (isset($response['usage'])) {
+            $this->lastTokensUsed = (int) ($response['usage']['total_tokens'] ?? 0);
+            $this->lastInputTokens = (int) ($response['usage']['prompt_tokens'] ?? 0);
+            $this->lastOutputTokens = (int) ($response['usage']['completion_tokens'] ?? 0);
         }
 
         // Extract content from response
@@ -306,13 +342,199 @@ class MlCategoryAiClient
     }
 
     /**
-     * Get last tokens used
+     * Get last tokens used (total)
      *
      * @return int
      */
     public function getLastTokensUsed()
     {
         return $this->lastTokensUsed;
+    }
+
+    /**
+     * Get last input tokens used
+     *
+     * @return int
+     */
+    public function getLastInputTokens()
+    {
+        return $this->lastInputTokens;
+    }
+
+    /**
+     * Get last output tokens used
+     *
+     * @return int
+     */
+    public function getLastOutputTokens()
+    {
+        return $this->lastOutputTokens;
+    }
+
+    /**
+     * Get last request time in milliseconds
+     *
+     * @return int
+     */
+    public function getLastRequestTimeMs()
+    {
+        return $this->lastRequestTimeMs;
+    }
+
+    /**
+     * Send multiple prompts in parallel using curl_multi
+     *
+     * @param array $requests Array of ['prompt' => string, 'system' => string, 'cache_key' => string, 'id' => mixed]
+     *
+     * @return array Results indexed by 'id' with ['success' => bool, 'content' => string, 'error' => string, 'tokens_in' => int, 'tokens_out' => int, 'time_ms' => int]
+     */
+    public function generateParallel($requests)
+    {
+        if (empty($this->apiKey)) {
+            $results = [];
+            foreach ($requests as $req) {
+                $results[$req['id']] = [
+                    'success' => false,
+                    'content' => '',
+                    'error' => 'API key is not configured',
+                    'tokens_in' => 0,
+                    'tokens_out' => 0,
+                    'time_ms' => 0,
+                ];
+            }
+
+            return $results;
+        }
+
+        $url = $this->buildUrl();
+        $headers = $this->buildHeaders();
+        $multiHandle = curl_multi_init();
+        $handles = [];
+        $startTimes = [];
+
+        // Prepare all requests
+        foreach ($requests as $index => $req) {
+            $messages = [];
+            if (!empty($req['system'])) {
+                $messages[] = ['role' => 'system', 'content' => $req['system']];
+            }
+            $messages[] = ['role' => 'user', 'content' => $req['prompt']];
+
+            $requestData = [
+                'model' => $this->model,
+                'messages' => $messages,
+                'max_tokens' => $this->maxTokens,
+                'temperature' => $this->temperature,
+            ];
+
+            // Add prompt caching
+            if ($this->enablePromptCache && $this->provider === 'openai' && !empty($req['cache_key'])) {
+                $requestData['prompt_cache_key'] = 'mlcategoryai-' . $req['cache_key'];
+            }
+
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode($requestData),
+                CURLOPT_HTTPHEADER => $headers,
+                CURLOPT_TIMEOUT => 120,
+                CURLOPT_CONNECTTIMEOUT => 30,
+                CURLOPT_SSL_VERIFYPEER => true,
+            ]);
+
+            curl_multi_add_handle($multiHandle, $ch);
+            $handles[$index] = [
+                'handle' => $ch,
+                'id' => $req['id'],
+            ];
+            $startTimes[$index] = microtime(true);
+        }
+
+        // Execute all requests in parallel
+        $running = null;
+        do {
+            curl_multi_exec($multiHandle, $running);
+            if ($running > 0) {
+                curl_multi_select($multiHandle, 0.1);
+            }
+        } while ($running > 0);
+
+        // Collect results
+        $results = [];
+        foreach ($handles as $index => $handleData) {
+            $ch = $handleData['handle'];
+            $id = $handleData['id'];
+            $timeMs = (int) ((microtime(true) - $startTimes[$index]) * 1000);
+
+            $response = curl_multi_getcontent($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+
+            curl_multi_remove_handle($multiHandle, $ch);
+            curl_close($ch);
+
+            if ($curlError) {
+                $results[$id] = [
+                    'success' => false,
+                    'content' => '',
+                    'error' => 'cURL error: ' . $curlError,
+                    'tokens_in' => 0,
+                    'tokens_out' => 0,
+                    'time_ms' => $timeMs,
+                ];
+                continue;
+            }
+
+            if ($httpCode < 200 || $httpCode >= 300) {
+                $errorData = json_decode($response, true);
+                $errorMessage = isset($errorData['error']['message'])
+                    ? $errorData['error']['message']
+                    : 'HTTP error ' . $httpCode;
+                $results[$id] = [
+                    'success' => false,
+                    'content' => '',
+                    'error' => $errorMessage,
+                    'tokens_in' => 0,
+                    'tokens_out' => 0,
+                    'time_ms' => $timeMs,
+                ];
+                continue;
+            }
+
+            $decoded = json_decode($response, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $results[$id] = [
+                    'success' => false,
+                    'content' => '',
+                    'error' => 'Failed to parse API response',
+                    'tokens_in' => 0,
+                    'tokens_out' => 0,
+                    'time_ms' => $timeMs,
+                ];
+                continue;
+            }
+
+            $content = isset($decoded['choices'][0]['message']['content'])
+                ? trim($decoded['choices'][0]['message']['content'])
+                : '';
+            $tokensIn = (int) ($decoded['usage']['prompt_tokens'] ?? 0);
+            $tokensOut = (int) ($decoded['usage']['completion_tokens'] ?? 0);
+
+            $results[$id] = [
+                'success' => !empty($content),
+                'content' => $content,
+                'error' => empty($content) ? 'Empty response from API' : '',
+                'tokens_in' => $tokensIn,
+                'tokens_out' => $tokensOut,
+                'time_ms' => $timeMs,
+            ];
+        }
+
+        curl_multi_close($multiHandle);
+
+        return $results;
     }
 
     /**

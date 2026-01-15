@@ -146,11 +146,11 @@ class MlCategoryAiJobQueue
     }
 
     /**
-     * Process next batch of items
+     * Process next batch of items using parallel API calls
      *
      * @param int $idJob
      * @param Module $module
-     * @param int $batchSize
+     * @param int $batchSize Number of items to process (will be sent in parallel)
      *
      * @return array Processing result
      */
@@ -221,66 +221,30 @@ class MlCategoryAiJobQueue
             ];
         }
 
-        $generator = new MlCategoryAiGenerator($module);
-        $requestDelay = (int) Configuration::get(Mlcategoryaidescription::CONFIG_REQUEST_DELAY);
-        $processedCount = 0;
-        $failedCount = 0;
-        $results = [];
+        // Check if parallel processing is enabled (default: yes)
+        $useParallel = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, true);
 
-        foreach ($batchItems as $index => $item) {
-            try {
-                $result = $generator->generateField(
-                    (int) $item['id_category'],
-                    (int) $item['id_lang'],
-                    (string) $item['field_type'],
-                    $job['write_mode']
-                );
-            } catch (Exception $e) {
-                $result = [
-                    'success' => false,
-                    'skipped' => false,
-                    'error' => 'Exception: ' . $e->getMessage(),
-                ];
-            }
-
-            $results[] = [
-                'id_category' => $item['id_category'],
-                'id_lang' => $item['id_lang'],
-                'field_type' => $item['field_type'],
-                'success' => $result['success'],
-                'skipped' => isset($result['skipped']) ? $result['skipped'] : false,
-                'error' => isset($result['error']) ? $result['error'] : '',
-            ];
-
-            if ($result['success']) {
-                ++$processedCount;
-            } else {
-                ++$failedCount;
-                $this->appendErrorLog($idJob, sprintf(
-                    'Category %d, Lang %d, Field %s: %s',
-                    $item['id_category'],
-                    $item['id_lang'],
-                    $item['field_type'],
-                    $result['error']
-                ));
-            }
-
-            // Delay between requests (except for last item)
-            if ($index < count($batchItems) - 1 && $requestDelay > 0) {
-                sleep($requestDelay);
-            }
+        if ($useParallel && count($batchItems) > 1) {
+            $batchResult = $this->processParallelBatch($batchItems, $module, $job);
+        } else {
+            $batchResult = $this->processSequentialBatch($batchItems, $module, $job, $idJob);
         }
 
         // Update job progress
         $newPosition = $currentPosition + count($batchItems);
         $this->updateJob($idJob, [
             'current_position' => $newPosition,
-            'processed_items' => (int) $job['processed_items'] + $processedCount,
-            'failed_items' => (int) $job['failed_items'] + $failedCount,
+            'processed_items' => (int) $job['processed_items'] + $batchResult['processed'],
+            'failed_items' => (int) $job['failed_items'] + $batchResult['failed'],
             'last_processed_category_id' => end($batchItems)['id_category'],
             'last_processed_lang_id' => end($batchItems)['id_lang'],
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+
+        // Log errors
+        foreach ($batchResult['errors'] as $error) {
+            $this->appendErrorLog($idJob, $error);
+        }
 
         // Check if completed
         $isCompleted = ($newPosition >= count($items));
@@ -292,12 +256,17 @@ class MlCategoryAiJobQueue
         return [
             'success' => true,
             'completed' => $isCompleted,
-            'processed' => (int) $job['processed_items'] + $processedCount,
-            'failed' => (int) $job['failed_items'] + $failedCount,
+            'processed' => (int) $job['processed_items'] + $batchResult['processed'],
+            'failed' => (int) $job['failed_items'] + $batchResult['failed'],
+            'skipped' => $batchResult['skipped'],
             'total' => $job['total_items'],
             'current_position' => $newPosition,
-            'batch_results' => $results,
+            'batch_results' => $batchResult['results'],
             'progress_percent' => round(($newPosition / count($items)) * 100, 1),
+            'tokens_input' => $batchResult['tokens_input'],
+            'tokens_output' => $batchResult['tokens_output'],
+            'batch_time_ms' => $batchResult['time_ms'],
+            'parallel' => $useParallel && count($batchItems) > 1,
         ];
     }
 
@@ -506,5 +475,267 @@ class MlCategoryAiJobQueue
                 AND `id_shop` = ' . (int) $this->idShop;
 
         return Db::getInstance()->execute($sql);
+    }
+
+    /**
+     * Process batch items in parallel using curl_multi
+     *
+     * @param array $batchItems Items to process
+     * @param Module $module Module instance
+     * @param array $job Job data
+     *
+     * @return array ['processed', 'failed', 'skipped', 'results', 'errors', 'tokens_input', 'tokens_output', 'time_ms']
+     */
+    protected function processParallelBatch($batchItems, $module, $job)
+    {
+        $startTime = microtime(true);
+        $generator = new MlCategoryAiGenerator($module);
+        $client = MlCategoryAiClient::createFromConfig($module);
+
+        // Prepare all requests
+        $requests = [];
+        $skipResults = [];
+
+        foreach ($batchItems as $index => $item) {
+            $itemId = $item['id_category'] . '-' . $item['id_lang'] . '-' . $item['field_type'];
+
+            // Check if should skip (fill_missing mode)
+            if ($job['write_mode'] === Mlcategoryaidescription::WRITE_MODE_FILL_MISSING) {
+                $category = new Category((int) $item['id_category'], (int) $item['id_lang']);
+                if (Validate::isLoadedObject($category)) {
+                    $existingContent = $generator->getFieldValuePublic($category, $item['field_type']);
+                    if (!empty(trim(strip_tags($existingContent)))) {
+                        $skipResults[$itemId] = [
+                            'id_category' => $item['id_category'],
+                            'id_lang' => $item['id_lang'],
+                            'field_type' => $item['field_type'],
+                            'success' => true,
+                            'skipped' => true,
+                            'error' => '',
+                        ];
+                        continue;
+                    }
+                }
+            }
+
+            // Build prompt for this item
+            $promptData = $generator->buildPromptForItem($item['id_category'], $item['id_lang'], $item['field_type']);
+            if ($promptData === false) {
+                $skipResults[$itemId] = [
+                    'id_category' => $item['id_category'],
+                    'id_lang' => $item['id_lang'],
+                    'field_type' => $item['field_type'],
+                    'success' => false,
+                    'skipped' => false,
+                    'error' => 'Failed to build prompt',
+                ];
+                continue;
+            }
+
+            $requests[] = [
+                'id' => $itemId,
+                'prompt' => $promptData['prompt'],
+                'system' => '',
+                'cache_key' => $item['field_type'],
+                'item' => $item,
+            ];
+        }
+
+        // Send all requests in parallel
+        $apiResults = [];
+        if (!empty($requests)) {
+            $apiResults = $client->generateParallel($requests);
+        }
+
+        // Process results
+        $processed = 0;
+        $failed = 0;
+        $skipped = count($skipResults);
+        $results = array_values($skipResults);
+        $errors = [];
+        $tokensInput = 0;
+        $tokensOutput = 0;
+
+        foreach ($requests as $req) {
+            $itemId = $req['id'];
+            $item = $req['item'];
+            $apiResult = isset($apiResults[$itemId]) ? $apiResults[$itemId] : null;
+
+            if (!$apiResult || !$apiResult['success']) {
+                $errorMsg = $apiResult ? $apiResult['error'] : 'No API response';
+                $results[] = [
+                    'id_category' => $item['id_category'],
+                    'id_lang' => $item['id_lang'],
+                    'field_type' => $item['field_type'],
+                    'success' => false,
+                    'skipped' => false,
+                    'error' => $errorMsg,
+                ];
+                $errors[] = sprintf(
+                    'Category %d, Lang %d, Field %s: %s',
+                    $item['id_category'],
+                    $item['id_lang'],
+                    $item['field_type'],
+                    $errorMsg
+                );
+                ++$failed;
+                continue;
+            }
+
+            // Clean and save the content
+            $content = $generator->cleanContentPublic($apiResult['content'], $item['field_type']);
+            $category = new Category((int) $item['id_category'], (int) $item['id_lang']);
+
+            if (!Validate::isLoadedObject($category)) {
+                $results[] = [
+                    'id_category' => $item['id_category'],
+                    'id_lang' => $item['id_lang'],
+                    'field_type' => $item['field_type'],
+                    'success' => false,
+                    'skipped' => false,
+                    'error' => 'Category not found',
+                ];
+                ++$failed;
+                continue;
+            }
+
+            $updateResult = $generator->updateCategoryFieldPublic($category, $item['field_type'], $content, $item['id_lang']);
+
+            if ($updateResult) {
+                $results[] = [
+                    'id_category' => $item['id_category'],
+                    'id_lang' => $item['id_lang'],
+                    'field_type' => $item['field_type'],
+                    'success' => true,
+                    'skipped' => false,
+                    'error' => '',
+                ];
+                ++$processed;
+
+                // Log generation
+                $generator->logGenerationPublic(
+                    $item['id_category'],
+                    $item['id_lang'],
+                    $item['field_type'],
+                    'success',
+                    '',
+                    $apiResult['tokens_in'] + $apiResult['tokens_out']
+                );
+            } else {
+                $results[] = [
+                    'id_category' => $item['id_category'],
+                    'id_lang' => $item['id_lang'],
+                    'field_type' => $item['field_type'],
+                    'success' => false,
+                    'skipped' => false,
+                    'error' => 'Failed to update category',
+                ];
+                ++$failed;
+            }
+
+            $tokensInput += $apiResult['tokens_in'];
+            $tokensOutput += $apiResult['tokens_out'];
+        }
+
+        $timeMs = (int) ((microtime(true) - $startTime) * 1000);
+
+        return [
+            'processed' => $processed,
+            'failed' => $failed,
+            'skipped' => $skipped,
+            'results' => $results,
+            'errors' => $errors,
+            'tokens_input' => $tokensInput,
+            'tokens_output' => $tokensOutput,
+            'time_ms' => $timeMs,
+        ];
+    }
+
+    /**
+     * Process batch items sequentially (fallback)
+     *
+     * @param array $batchItems Items to process
+     * @param Module $module Module instance
+     * @param array $job Job data
+     * @param int $idJob Job ID
+     *
+     * @return array ['processed', 'failed', 'skipped', 'results', 'errors', 'tokens_input', 'tokens_output', 'time_ms']
+     */
+    protected function processSequentialBatch($batchItems, $module, $job, $idJob)
+    {
+        $startTime = microtime(true);
+        $generator = new MlCategoryAiGenerator($module);
+        $requestDelay = (int) Configuration::get(Mlcategoryaidescription::CONFIG_REQUEST_DELAY);
+
+        $processed = 0;
+        $failed = 0;
+        $skipped = 0;
+        $results = [];
+        $errors = [];
+        $tokensInput = 0;
+        $tokensOutput = 0;
+
+        foreach ($batchItems as $index => $item) {
+            try {
+                $result = $generator->generateField(
+                    (int) $item['id_category'],
+                    (int) $item['id_lang'],
+                    (string) $item['field_type'],
+                    $job['write_mode']
+                );
+            } catch (Exception $e) {
+                $result = [
+                    'success' => false,
+                    'skipped' => false,
+                    'error' => 'Exception: ' . $e->getMessage(),
+                    'tokens' => 0,
+                ];
+            }
+
+            $results[] = [
+                'id_category' => $item['id_category'],
+                'id_lang' => $item['id_lang'],
+                'field_type' => $item['field_type'],
+                'success' => $result['success'],
+                'skipped' => isset($result['skipped']) ? $result['skipped'] : false,
+                'error' => isset($result['error']) ? $result['error'] : '',
+            ];
+
+            if (isset($result['skipped']) && $result['skipped']) {
+                ++$skipped;
+                ++$processed; // Skipped counts as processed
+            } elseif ($result['success']) {
+                ++$processed;
+                $tokensInput += isset($result['tokens']) ? (int) ($result['tokens'] * 0.7) : 0; // Estimate
+                $tokensOutput += isset($result['tokens']) ? (int) ($result['tokens'] * 0.3) : 0;
+            } else {
+                ++$failed;
+                $errors[] = sprintf(
+                    'Category %d, Lang %d, Field %s: %s',
+                    $item['id_category'],
+                    $item['id_lang'],
+                    $item['field_type'],
+                    $result['error']
+                );
+            }
+
+            // Delay between requests (except for last item)
+            if ($index < count($batchItems) - 1 && $requestDelay > 0) {
+                sleep($requestDelay);
+            }
+        }
+
+        $timeMs = (int) ((microtime(true) - $startTime) * 1000);
+
+        return [
+            'processed' => $processed,
+            'failed' => $failed,
+            'skipped' => $skipped,
+            'results' => $results,
+            'errors' => $errors,
+            'tokens_input' => $tokensInput,
+            'tokens_output' => $tokensOutput,
+            'time_ms' => $timeMs,
+        ];
     }
 }

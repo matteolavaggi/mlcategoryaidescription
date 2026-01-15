@@ -126,8 +126,8 @@ class MlCategoryAiGenerator
             $resolvedPrompt .= PHP_EOL . '3. Do not include any explanations or additional text.';
         }
 
-        // Generate content via AI
-        $generatedContent = $this->client->generate($resolvedPrompt);
+        // Generate content via AI (with prompt caching by field type)
+        $generatedContent = $this->client->generate($resolvedPrompt, '', $fieldType);
 
         if ($generatedContent === false) {
             $result['error'] = $this->client->getLastError();
@@ -500,5 +500,103 @@ class MlCategoryAiGenerator
         $result = Db::getInstance()->getRow($sql);
 
         return $result ?: null;
+    }
+
+    /**
+     * Build prompt for an item (public wrapper for parallel processing)
+     *
+     * @param int $idCategory
+     * @param int $idLang
+     * @param string $fieldType
+     *
+     * @return array|false ['prompt' => string] or false on error
+     */
+    public function buildPromptForItem($idCategory, $idLang, $fieldType)
+    {
+        $category = new Category((int) $idCategory, (int) $idLang);
+        if (!Validate::isLoadedObject($category)) {
+            return false;
+        }
+
+        $prompt = $this->getPromptTemplate($fieldType, $idLang);
+        if (empty($prompt)) {
+            return false;
+        }
+
+        // Resolve placeholders
+        $placeholder = new MlCategoryAiPlaceholder($idCategory, $idLang, $this->idShop);
+        $resolvedPrompt = $placeholder->resolve($prompt);
+
+        // Append language and format instructions
+        $languageName = $placeholder->resolve('{language_name}');
+        $resolvedPrompt .= PHP_EOL . PHP_EOL . 'CRITICAL INSTRUCTIONS:';
+        $resolvedPrompt .= PHP_EOL . '1. Write your response in ' . $languageName . '.';
+
+        if ($fieldType === Mlcategoryaidescription::FIELD_DESCRIPTION) {
+            $resolvedPrompt .= PHP_EOL . '2. Use PLAIN HTML formatting only (use <h2>, <h3>, <p>, <strong>, <ul>, <li> tags).';
+            $resolvedPrompt .= PHP_EOL . '3. DO NOT use Markdown formatting (no #, ##, **, __, etc.).';
+            $resolvedPrompt .= PHP_EOL . '4. Return ONLY the HTML content, no explanations or additional text.';
+        } else {
+            $resolvedPrompt .= PHP_EOL . '2. Return ONLY plain text, no HTML tags, no Markdown, no formatting.';
+            $resolvedPrompt .= PHP_EOL . '3. Do not include any explanations or additional text.';
+        }
+
+        return ['prompt' => $resolvedPrompt];
+    }
+
+    /**
+     * Get field value (public wrapper)
+     *
+     * @param Category $category
+     * @param string $fieldType
+     *
+     * @return string
+     */
+    public function getFieldValuePublic($category, $fieldType)
+    {
+        return $this->getFieldValue($category, $fieldType);
+    }
+
+    /**
+     * Clean content (public wrapper)
+     *
+     * @param string $content
+     * @param string $fieldType
+     *
+     * @return string
+     */
+    public function cleanContentPublic($content, $fieldType)
+    {
+        return $this->cleanContent($content, $fieldType);
+    }
+
+    /**
+     * Update category field (public wrapper)
+     *
+     * @param Category $category
+     * @param string $fieldType
+     * @param string $content
+     * @param int $idLang
+     *
+     * @return bool
+     */
+    public function updateCategoryFieldPublic($category, $fieldType, $content, $idLang)
+    {
+        return $this->updateCategoryField($category, $fieldType, $content, $idLang);
+    }
+
+    /**
+     * Log generation (public wrapper)
+     *
+     * @param int $idCategory
+     * @param int $idLang
+     * @param string $fieldType
+     * @param string $status
+     * @param string $errorMessage
+     * @param int $tokensUsed
+     */
+    public function logGenerationPublic($idCategory, $idLang, $fieldType, $status, $errorMessage = '', $tokensUsed = 0)
+    {
+        $this->logGeneration($idCategory, $idLang, $fieldType, $status, $errorMessage, $tokensUsed);
     }
 }
