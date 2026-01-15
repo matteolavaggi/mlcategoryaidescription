@@ -23,6 +23,14 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+// Load module classes
+require_once __DIR__ . '/classes/MlCategoryAiClient.php';
+require_once __DIR__ . '/classes/MlCategoryAiGenerator.php';
+require_once __DIR__ . '/classes/MlCategoryAiJobQueue.php';
+require_once __DIR__ . '/classes/MlCategoryAiPlaceholder.php';
+require_once __DIR__ . '/classes/MlCategoryAiPromptTemplate.php';
+require_once __DIR__ . '/classes/MlCategoryAiRunStats.php';
+
 class Mlcategoryaidescription extends Module
 {
     /**
