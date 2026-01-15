@@ -102,6 +102,36 @@ class MlCategoryAiClient
     ];
 
     /**
+     * Models that only support temperature = 1.0
+     */
+    protected static $fixedTemperatureModels = [
+        'o1',
+        'o1-mini',
+        'o1-preview',
+        'gpt-4o-mini',
+        'gpt-5-nano',
+        'gpt-5-mini',
+    ];
+
+    /**
+     * Check if current model requires fixed temperature (1.0)
+     *
+     * @return bool
+     */
+    protected function requiresFixedTemperature()
+    {
+        $modelLower = strtolower($this->model);
+
+        foreach (self::$fixedTemperatureModels as $pattern) {
+            if (strpos($modelLower, strtolower($pattern)) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get the correct token limit parameter name for current model
      * Newer models (o1, mini, nano) use max_completion_tokens
      * Older models use max_tokens
@@ -213,8 +243,12 @@ class MlCategoryAiClient
         $requestData = [
             'model' => $this->model,
             'messages' => $messages,
-            'temperature' => $this->temperature,
         ];
+
+        // Add temperature (mini/nano models only support 1.0)
+        if (!$this->requiresFixedTemperature()) {
+            $requestData['temperature'] = $this->temperature;
+        }
 
         // Add token limit with correct parameter name for model
         // Newer models (o1, mini, nano) use max_completion_tokens, older use max_tokens
@@ -469,8 +503,12 @@ class MlCategoryAiClient
             $requestData = [
                 'model' => $this->model,
                 'messages' => $messages,
-                'temperature' => $this->temperature,
             ];
+
+            // Add temperature (mini/nano models only support 1.0)
+            if (!$this->requiresFixedTemperature()) {
+                $requestData['temperature'] = $this->temperature;
+            }
 
             // Add token limit with correct parameter name for model
             if ($this->maxTokens > 0) {
