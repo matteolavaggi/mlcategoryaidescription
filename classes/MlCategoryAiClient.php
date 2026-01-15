@@ -89,6 +89,41 @@ class MlCategoryAiClient
     protected $enablePromptCache = true;
 
     /**
+     * Models that require max_completion_tokens instead of max_tokens
+     * These are typically newer reasoning/mini models
+     */
+    protected static $completionTokenModels = [
+        'o1',
+        'o1-mini',
+        'o1-preview',
+        'gpt-4o-mini',
+        'gpt-5-nano',
+        'gpt-5-mini',
+    ];
+
+    /**
+     * Get the correct token limit parameter name for current model
+     * Newer models (o1, mini, nano) use max_completion_tokens
+     * Older models use max_tokens
+     *
+     * @return string 'max_completion_tokens' or 'max_tokens'
+     */
+    protected function getTokenLimitParamName()
+    {
+        $modelLower = strtolower($this->model);
+
+        // Check exact matches first
+        foreach (self::$completionTokenModels as $pattern) {
+            if (strpos($modelLower, strtolower($pattern)) !== false) {
+                return 'max_completion_tokens';
+            }
+        }
+
+        // Default to max_tokens for standard models
+        return 'max_tokens';
+    }
+
+    /**
      * Constructor
      *
      * @param string $apiKey
@@ -181,9 +216,11 @@ class MlCategoryAiClient
             'temperature' => $this->temperature,
         ];
 
-        // Only add max_tokens if configured (some models like gpt-5-nano don't support it)
+        // Add token limit with correct parameter name for model
+        // Newer models (o1, mini, nano) use max_completion_tokens, older use max_tokens
         if ($this->maxTokens > 0) {
-            $requestData['max_tokens'] = $this->maxTokens;
+            $tokenParam = $this->getTokenLimitParamName();
+            $requestData[$tokenParam] = $this->maxTokens;
         }
 
         // Add prompt caching for OpenAI (reduces input token costs by up to 50%)
@@ -435,9 +472,10 @@ class MlCategoryAiClient
                 'temperature' => $this->temperature,
             ];
 
-            // Only add max_tokens if configured
+            // Add token limit with correct parameter name for model
             if ($this->maxTokens > 0) {
-                $requestData['max_tokens'] = $this->maxTokens;
+                $tokenParam = $this->getTokenLimitParamName();
+                $requestData[$tokenParam] = $this->maxTokens;
             }
 
             // Add prompt caching
