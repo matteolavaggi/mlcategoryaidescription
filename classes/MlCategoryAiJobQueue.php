@@ -156,6 +156,9 @@ class MlCategoryAiJobQueue
      */
     public function processNextBatch($idJob, $module, $batchSize = 5)
     {
+        $t0 = microtime(true);
+        PrestaShopLogger::addLog('[MLCATAI] processNextBatch START jobId=' . $idJob, 1);
+
         $job = $this->getJob($idJob);
 
         if (!$job) {
@@ -165,6 +168,9 @@ class MlCategoryAiJobQueue
                 'completed' => false,
             ];
         }
+
+        $t1 = microtime(true);
+        PrestaShopLogger::addLog('[MLCATAI] getJob took ' . round(($t1 - $t0) * 1000) . 'ms', 1);
 
         if ($job['status'] === self::STATUS_COMPLETED) {
             return [
@@ -189,8 +195,10 @@ class MlCategoryAiJobQueue
         }
 
         // Build list of items to process
+        $t2 = microtime(true);
         $items = $this->buildItemsList($job);
         $currentPosition = (int) $job['current_position'];
+        PrestaShopLogger::addLog('[MLCATAI] buildItemsList took ' . round((microtime(true) - $t2) * 1000) . 'ms - items=' . count($items), 1);
 
         // Check if job is complete
         if ($currentPosition >= count($items)) {
@@ -224,13 +232,19 @@ class MlCategoryAiJobQueue
         // Check if parallel processing is enabled (default: yes)
         $useParallel = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, true);
 
+        $t3 = microtime(true);
+        PrestaShopLogger::addLog('[MLCATAI] processBatch START - items=' . count($batchItems) . ' parallel=' . ($useParallel ? 'Y' : 'N'), 1);
+
         if ($useParallel && count($batchItems) > 1) {
             $batchResult = $this->processParallelBatch($batchItems, $module, $job);
         } else {
             $batchResult = $this->processSequentialBatch($batchItems, $module, $job, $idJob);
         }
 
+        PrestaShopLogger::addLog('[MLCATAI] processBatch END - took ' . round((microtime(true) - $t3) * 1000) . 'ms', 1);
+
         // Update job progress
+        $t4 = microtime(true);
         $newPosition = $currentPosition + count($batchItems);
         $this->updateJob($idJob, [
             'current_position' => $newPosition,
@@ -240,6 +254,7 @@ class MlCategoryAiJobQueue
             'last_processed_lang_id' => end($batchItems)['id_lang'],
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+        PrestaShopLogger::addLog('[MLCATAI] updateJob took ' . round((microtime(true) - $t4) * 1000) . 'ms', 1);
 
         // Log errors
         foreach ($batchResult['errors'] as $error) {

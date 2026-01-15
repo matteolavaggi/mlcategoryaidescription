@@ -71,6 +71,8 @@ class MlCategoryAiGenerator
      */
     public function generateField($idCategory, $idLang, $fieldType, $writeMode = 'fill_missing')
     {
+        $t0 = microtime(true);
+
         $result = [
             'success' => false,
             'content' => '',
@@ -87,6 +89,9 @@ class MlCategoryAiGenerator
             return $result;
         }
 
+        $t1 = microtime(true);
+        PrestaShopLogger::addLog('[MLCATAI] loadCategory took ' . round(($t1 - $t0) * 1000) . 'ms - cat=' . $idCategory, 1);
+
         // Check if we should skip (fill_missing mode and field has content)
         if ($writeMode === Mlcategoryaidescription::WRITE_MODE_FILL_MISSING) {
             $existingContent = $this->getFieldValue($category, $fieldType);
@@ -100,6 +105,7 @@ class MlCategoryAiGenerator
         }
 
         // Get prompt template for this field type and language
+        $t2 = microtime(true);
         $prompt = $this->getPromptTemplate($fieldType, $idLang);
         if (empty($prompt)) {
             $result['error'] = 'No prompt template found for field: ' . $fieldType;
@@ -110,6 +116,7 @@ class MlCategoryAiGenerator
         // Resolve placeholders
         $placeholder = new MlCategoryAiPlaceholder($idCategory, $idLang, $this->idShop);
         $resolvedPrompt = $placeholder->resolve($prompt);
+        PrestaShopLogger::addLog('[MLCATAI] promptResolve took ' . round((microtime(true) - $t2) * 1000) . 'ms', 1);
 
         // Append language and format instructions
         $languageName = $placeholder->resolve('{language_name}');

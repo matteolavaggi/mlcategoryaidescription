@@ -230,6 +230,8 @@ class MlCategoryAiClient
         $headers = $this->buildHeaders();
         $startTime = microtime(true);
 
+        PrestaShopLogger::addLog('[MLCATAI] API request START - url=' . $url, 1);
+
         $ch = curl_init();
 
         curl_setopt_array($ch, [
@@ -246,6 +248,9 @@ class MlCategoryAiClient
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
+
+        $elapsed = round((microtime(true) - $startTime) * 1000);
+        PrestaShopLogger::addLog('[MLCATAI] API request END - ' . $elapsed . 'ms - httpCode=' . $httpCode, 1);
 
         curl_close($ch);
 

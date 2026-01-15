@@ -129,6 +129,9 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
      */
     protected function handleCreateJob()
     {
+        $startTime = microtime(true);
+        PrestaShopLogger::addLog('[MLCATAI] createJob START', 1);
+
         require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiJobQueue.php';
 
         $categoryIds = Tools::getValue('category_ids');
@@ -162,6 +165,9 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
             $writeMode
         );
 
+        $elapsed = round((microtime(true) - $startTime) * 1000);
+        PrestaShopLogger::addLog('[MLCATAI] createJob END - jobId=' . $jobId . ' - ' . $elapsed . 'ms', 1);
+
         if ($jobId) {
             $this->jsonResponse([
                 'success' => true,
@@ -178,6 +184,9 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
      */
     protected function handleProcessJob()
     {
+        $startTime = microtime(true);
+        PrestaShopLogger::addLog('[MLCATAI] processJob START', 1);
+
         require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiJobQueue.php';
 
         $jobId = (int) Tools::getValue('job_id');
@@ -196,8 +205,13 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
             $batchSize = 5;
         }
 
+        PrestaShopLogger::addLog('[MLCATAI] processJob - calling processNextBatch jobId=' . $jobId . ' batchSize=' . $batchSize, 1);
+
         // Pass module instance - processNextBatch creates its own generator
         $result = $jobQueue->processNextBatch($jobId, $this->module, $batchSize);
+
+        $elapsed = round((microtime(true) - $startTime) * 1000);
+        PrestaShopLogger::addLog('[MLCATAI] processJob END - ' . $elapsed . 'ms - processed=' . ($result['processed'] ?? 0), 1);
 
         $this->jsonResponse($result);
     }
