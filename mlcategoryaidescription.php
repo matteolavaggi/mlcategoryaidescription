@@ -260,126 +260,235 @@ class Mlcategoryaidescription extends Module
         $defaultPrompts = [
             self::FIELD_DESCRIPTION => [
                 'name' => 'Default Description Prompt',
-                'template_en' => 'Write a compelling and SEO-friendly category description for an e-commerce website for this category:
+                'template_en' => 'Write a compelling and SEO-friendly category description for an e-commerce website.
 
-Category name: {category_name}
-Parent Category name: {parent_category_name}
-Website name: {site_name}
+CONTEXT INFORMATION:
+- Category name: {category_name}
+- Parent category: {parent_category_name}
+- Website: {site_name}
+- Website description: {site_description}
+- Sample products in this category (for context only): {first_products:10}
 
-Some random products included in this category: {first_products:10}
+IMPORTANT GUIDELINES:
+The product list above is provided ONLY to help you understand what TYPE of products this category contains. Use it to identify the general product category and typical use cases.
 
-Requirements:
-- 300 words
-- Include relevant keywords naturally
-- Highlight benefits and variety
-- Use best practice SEO writing skill
-- Do not mention prices or specific promotions
-- Do not focus on the products, instead focus on the category description',
-                'template_fr' => 'Rédigez une description de catégorie captivante et optimisée pour le SEO pour un site e-commerce :
+DO NOT:
+- Mention specific product names, models, or unique features from the sample list
+- Reference individual items like "our conical pendant lamp" or "the vintage brass fixture"
+- Include any product-specific details that only apply to individual items
 
-Nom de la catégorie : {category_name}
-Nom de la catégorie parente : {parent_category_name}
-Nom du site : {site_name}
+DO:
+- Write about the general product TYPE (e.g., "pendant lamps", "LED lighting", "outdoor fixtures")
+- Describe benefits relevant to the entire category
+- Include keywords for the product category, not specific items
+- Focus on what customers look for when shopping this category
+- Highlight variety, quality, and shopping experience
 
-Quelques produits inclus dans cette catégorie : {first_products:10}
+REQUIREMENTS:
+- Length: 250-350 words
+- Use natural, SEO-friendly language
+- Include relevant category keywords (not product names)
+- Write in an engaging, professional tone
+- Structure with clear paragraphs
+- Do not mention prices or specific promotions',
+                'template_fr' => 'Rédigez une description de catégorie captivante et optimisée SEO pour un site e-commerce.
 
-Exigences :
-- 300 mots
-- Intégrer les mots-clés pertinents de manière naturelle
-- Mettre en avant les avantages et la variété de l\'offre
-- Utiliser les meilleures pratiques de rédaction SEO
-- Ne pas mentionner les prix ni les promotions spécifiques
-- Ne pas se concentrer sur les produits individuels, mais plutôt sur la description générale de la catégorie',
-                'template_it' => 'Scrivi una descrizione di categoria accattivante e ottimizzata SEO per un sito e-commerce:
+INFORMATIONS CONTEXTUELLES :
+- Nom de la catégorie : {category_name}
+- Catégorie parente : {parent_category_name}
+- Site web : {site_name}
+- Description du site : {site_description}
+- Exemples de produits dans cette catégorie (contexte uniquement) : {first_products:10}
 
-Nome della categoria: {category_name}
-Nome della categoria padre: {parent_category_name}
-Nome del sito: {site_name}
+DIRECTIVES IMPORTANTES :
+La liste de produits ci-dessus est fournie UNIQUEMENT pour vous aider à comprendre quel TYPE de produits cette catégorie contient. Utilisez-la pour identifier la catégorie générale et les cas d\'utilisation typiques.
 
-Alcuni prodotti inclusi in questa categoria: {first_products:10}
+NE PAS :
+- Mentionner des noms de produits spécifiques, modèles ou caractéristiques uniques
+- Faire référence à des articles individuels
+- Inclure des détails spécifiques qui ne s\'appliquent qu\'à certains produits
 
-Requisiti:
-- 300 parole
-- Integrare le parole chiave pertinenti in modo naturale
-- Evidenziare i vantaggi e la varietà dell\'offerta
-- Utilizzare le migliori pratiche di scrittura SEO
-- Non menzionare prezzi né promozioni specifiche
-- Non concentrarsi sui singoli prodotti, ma sulla descrizione generale della categoria',
-                'template_de' => 'Schreiben Sie eine ansprechende und SEO-optimierte Kategoriebeschreibung für eine E-Commerce-Website:
+À FAIRE :
+- Écrire sur le TYPE général de produits
+- Décrire les avantages pertinents pour toute la catégorie
+- Inclure des mots-clés pour la catégorie, pas pour des produits spécifiques
+- Se concentrer sur ce que les clients recherchent
+- Mettre en avant la variété, la qualité et l\'expérience d\'achat
 
-Kategoriename: {category_name}
-Übergeordnete Kategorie: {parent_category_name}
-Website-Name: {site_name}
+EXIGENCES :
+- Longueur : 250-350 mots
+- Langage naturel et optimisé SEO
+- Ton engageant et professionnel
+- Ne pas mentionner les prix ou promotions',
+                'template_it' => 'Scrivi una descrizione di categoria accattivante e ottimizzata SEO per un sito e-commerce.
 
-Einige Produkte in dieser Kategorie: {first_products:10}
+INFORMAZIONI DI CONTESTO:
+- Nome categoria: {category_name}
+- Categoria padre: {parent_category_name}
+- Sito web: {site_name}
+- Descrizione del sito: {site_description}
+- Prodotti di esempio in questa categoria (solo per contesto): {first_products:10}
 
-Anforderungen:
-- 300 Wörter
-- Relevante Keywords natürlich einbinden
-- Vorteile und Vielfalt des Angebots hervorheben
-- Best Practices für SEO-Texte anwenden
-- Keine Preise oder spezifische Aktionen erwähnen
-- Nicht auf einzelne Produkte fokussieren, sondern auf die allgemeine Kategoriebeschreibung',
-                'template_es' => 'Escribe una descripción de categoría atractiva y optimizada para SEO para un sitio de comercio electrónico:
+LINEE GUIDA IMPORTANTI:
+L\'elenco prodotti sopra è fornito SOLO per aiutarti a capire che TIPO di prodotti contiene questa categoria. Usalo per identificare la categoria generale e i casi d\'uso tipici.
 
-Nombre de la categoría: {category_name}
-Nombre de la categoría padre: {parent_category_name}
-Nombre del sitio: {site_name}
+NON FARE:
+- Menzionare nomi di prodotti specifici, modelli o caratteristiche uniche dalla lista
+- Fare riferimento a singoli articoli come "la nostra lampada a sospensione" o "il lampadario vintage"
+- Includere dettagli specifici che si applicano solo a singoli prodotti
 
-Algunos productos incluidos en esta categoría: {first_products:10}
+FARE:
+- Scrivere sul TIPO generale di prodotti (es. "lampade a sospensione", "illuminazione LED")
+- Descrivere i vantaggi rilevanti per l\'intera categoria
+- Includere parole chiave per la categoria, non per singoli prodotti
+- Concentrarsi su cosa cercano i clienti quando acquistano in questa categoria
+- Evidenziare varietà, qualità ed esperienza di acquisto
 
-Requisitos:
-- 300 palabras
-- Integrar las palabras clave relevantes de forma natural
-- Destacar las ventajas y la variedad de la oferta
-- Utilizar las mejores prácticas de redacción SEO
-- No mencionar precios ni promociones específicas
-- No centrarse en productos individuales, sino en la descripción general de la categoría',
-                'template_pt' => 'Escreva uma descrição de categoria atraente e otimizada para SEO para um site de e-commerce:
+REQUISITI:
+- Lunghezza: 250-350 parole
+- Linguaggio naturale e SEO-friendly
+- Tono coinvolgente e professionale
+- Non menzionare prezzi o promozioni specifiche',
+                'template_de' => 'Schreiben Sie eine ansprechende und SEO-optimierte Kategoriebeschreibung für eine E-Commerce-Website.
 
-Nome da categoria: {category_name}
-Nome da categoria pai: {parent_category_name}
-Nome do site: {site_name}
+KONTEXTINFORMATIONEN:
+- Kategoriename: {category_name}
+- Übergeordnete Kategorie: {parent_category_name}
+- Website: {site_name}
+- Website-Beschreibung: {site_description}
+- Beispielprodukte in dieser Kategorie (nur als Kontext): {first_products:10}
 
-Alguns produtos incluídos nesta categoria: {first_products:10}
+WICHTIGE RICHTLINIEN:
+Die obige Produktliste dient NUR dazu, Ihnen zu helfen zu verstehen, welche ART von Produkten diese Kategorie enthält. Nutzen Sie sie, um die allgemeine Produktkategorie zu identifizieren.
 
-Requisitos:
-- 300 palavras
-- Integrar palavras-chave relevantes de forma natural
-- Destacar as vantagens e a variedade da oferta
-- Usar as melhores práticas de redação SEO
-- Não mencionar preços nem promoções específicas
-- Não focar em produtos individuais, mas na descrição geral da categoria',
-                'template_nl' => 'Schrijf een aantrekkelijke en SEO-geoptimaliseerde categoriebeschrijving voor een e-commerce website:
+NICHT TUN:
+- Spezifische Produktnamen, Modelle oder einzigartige Merkmale erwähnen
+- Auf einzelne Artikel verweisen
+- Produktspezifische Details einbeziehen
 
-Categorienaam: {category_name}
-Bovenliggende categorie: {parent_category_name}
-Websitenaam: {site_name}
+TUN:
+- Über den allgemeinen Produkttyp schreiben
+- Vorteile beschreiben, die für die gesamte Kategorie relevant sind
+- Schlüsselwörter für die Kategorie einbeziehen, nicht für einzelne Produkte
+- Vielfalt, Qualität und Einkaufserlebnis hervorheben
 
-Enkele producten in deze categorie: {first_products:10}
+ANFORDERUNGEN:
+- Länge: 250-350 Wörter
+- Natürliche, SEO-freundliche Sprache
+- Ansprechender, professioneller Ton
+- Keine Preise oder spezifische Aktionen erwähnen',
+                'template_es' => 'Escribe una descripción de categoría atractiva y optimizada para SEO para un sitio e-commerce.
 
-Vereisten:
-- 300 woorden
-- Relevante zoekwoorden natuurlijk integreren
-- Voordelen en variëteit van het aanbod benadrukken
-- Beste SEO-schrijfpraktijken toepassen
-- Geen prijzen of specifieke promoties vermelden
-- Niet focussen op individuele producten, maar op de algemene categoriebeschrijving',
-                'template_pl' => 'Napisz atrakcyjny i zoptymalizowany pod kątem SEO opis kategorii dla sklepu internetowego:
+INFORMACIÓN DE CONTEXTO:
+- Nombre de categoría: {category_name}
+- Categoría padre: {parent_category_name}
+- Sitio web: {site_name}
+- Descripción del sitio: {site_description}
+- Productos de ejemplo en esta categoría (solo contexto): {first_products:10}
 
-Nazwa kategorii: {category_name}
-Nazwa kategorii nadrzędnej: {parent_category_name}
-Nazwa strony: {site_name}
+DIRECTRICES IMPORTANTES:
+La lista de productos anterior se proporciona SOLO para ayudarte a entender qué TIPO de productos contiene esta categoría. Úsala para identificar la categoría general.
 
-Niektóre produkty w tej kategorii: {first_products:10}
+NO HACER:
+- Mencionar nombres de productos específicos, modelos o características únicas
+- Hacer referencia a artículos individuales
+- Incluir detalles específicos de productos individuales
 
-Wymagania:
-- 300 słów
-- Naturalnie integrować odpowiednie słowa kluczowe
-- Podkreślać zalety i różnorodność oferty
-- Stosować najlepsze praktyki pisania SEO
-- Nie wspominać cen ani konkretnych promocji
-- Nie skupiać się na pojedynczych produktach, lecz na ogólnym opisie kategorii',
+HACER:
+- Escribir sobre el TIPO general de productos
+- Describir beneficios relevantes para toda la categoría
+- Incluir palabras clave para la categoría, no para productos específicos
+- Destacar variedad, calidad y experiencia de compra
+
+REQUISITOS:
+- Longitud: 250-350 palabras
+- Lenguaje natural y optimizado para SEO
+- Tono atractivo y profesional
+- No mencionar precios ni promociones específicas',
+                'template_pt' => 'Escreva uma descrição de categoria atraente e otimizada para SEO para um site e-commerce.
+
+INFORMAÇÕES DE CONTEXTO:
+- Nome da categoria: {category_name}
+- Categoria pai: {parent_category_name}
+- Site: {site_name}
+- Descrição do site: {site_description}
+- Produtos de exemplo nesta categoria (apenas contexto): {first_products:10}
+
+DIRETRIZES IMPORTANTES:
+A lista de produtos acima é fornecida APENAS para ajudá-lo a entender que TIPO de produtos esta categoria contém. Use-a para identificar a categoria geral.
+
+NÃO FAZER:
+- Mencionar nomes de produtos específicos, modelos ou características únicas
+- Fazer referência a itens individuais
+- Incluir detalhes específicos de produtos individuais
+
+FAZER:
+- Escrever sobre o TIPO geral de produtos
+- Descrever benefícios relevantes para toda a categoria
+- Incluir palavras-chave para a categoria, não para produtos específicos
+- Destacar variedade, qualidade e experiência de compra
+
+REQUISITOS:
+- Comprimento: 250-350 palavras
+- Linguagem natural e otimizada para SEO
+- Tom envolvente e profissional
+- Não mencionar preços ou promoções específicas',
+                'template_nl' => 'Schrijf een aantrekkelijke en SEO-geoptimaliseerde categoriebeschrijving voor een e-commerce website.
+
+CONTEXTINFORMATIE:
+- Categorienaam: {category_name}
+- Bovenliggende categorie: {parent_category_name}
+- Website: {site_name}
+- Website beschrijving: {site_description}
+- Voorbeeldproducten in deze categorie (alleen context): {first_products:10}
+
+BELANGRIJKE RICHTLIJNEN:
+De bovenstaande productlijst is ALLEEN bedoeld om u te helpen begrijpen welk TYPE producten deze categorie bevat. Gebruik het om de algemene productcategorie te identificeren.
+
+NIET DOEN:
+- Specifieke productnamen, modellen of unieke kenmerken noemen
+- Verwijzen naar individuele artikelen
+- Productspecifieke details opnemen
+
+WEL DOEN:
+- Schrijven over het algemene producttype
+- Voordelen beschrijven die relevant zijn voor de hele categorie
+- Zoekwoorden voor de categorie opnemen, niet voor specifieke producten
+- Variëteit, kwaliteit en winkelervaring benadrukken
+
+VEREISTEN:
+- Lengte: 250-350 woorden
+- Natuurlijke, SEO-vriendelijke taal
+- Boeiende, professionele toon
+- Geen prijzen of specifieke promoties noemen',
+                'template_pl' => 'Napisz atrakcyjny i zoptymalizowany pod kątem SEO opis kategorii dla sklepu internetowego.
+
+INFORMACJE KONTEKSTOWE:
+- Nazwa kategorii: {category_name}
+- Kategoria nadrzędna: {parent_category_name}
+- Strona: {site_name}
+- Opis strony: {site_description}
+- Przykładowe produkty w tej kategorii (tylko kontekst): {first_products:10}
+
+WAŻNE WYTYCZNE:
+Powyższa lista produktów jest podana TYLKO po to, aby pomóc Ci zrozumieć, jaki TYP produktów zawiera ta kategoria. Użyj jej do identyfikacji ogólnej kategorii produktów.
+
+NIE RÓB:
+- Nie wspominaj konkretnych nazw produktów, modeli lub unikalnych cech
+- Nie odwołuj się do pojedynczych artykułów
+- Nie uwzględniaj szczegółów dotyczących konkretnych produktów
+
+RÓB:
+- Pisz o ogólnym TYPIE produktów
+- Opisuj korzyści istotne dla całej kategorii
+- Uwzględniaj słowa kluczowe dla kategorii, nie dla konkretnych produktów
+- Podkreślaj różnorodność, jakość i doświadczenie zakupowe
+
+WYMAGANIA:
+- Długość: 250-350 słów
+- Naturalny, przyjazny dla SEO język
+- Angażujący, profesjonalny ton
+- Nie wspominaj cen ani konkretnych promocji',
             ],
             self::FIELD_META_TITLE => [
                 'name' => 'Default Meta Title Prompt',
