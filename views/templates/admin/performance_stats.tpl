@@ -168,4 +168,89 @@
 		{l s='No generation runs recorded yet. Run your first batch generation to see performance statistics here.' mod='mlcategoryaidescription'}
 	</div>
 	{/if}
+
+	{* Debug Log Section *}
+	<hr>
+	<div class="row" style="margin-top: 15px;">
+		<div class="col-lg-12">
+			<h4><i class="icon icon-file-text-o"></i> {l s='Debug Log' mod='mlcategoryaidescription'}</h4>
+			<p class="help-block">{l s='View detailed processing logs for debugging API errors and performance issues.' mod='mlcategoryaidescription'}</p>
+			<button type="button" class="btn btn-default" id="btn-view-debug-log">
+				<i class="icon icon-eye"></i> {l s='View Log' mod='mlcategoryaidescription'}
+			</button>
+			<button type="button" class="btn btn-default" id="btn-refresh-debug-log" style="display: none;">
+				<i class="icon icon-refresh"></i> {l s='Refresh' mod='mlcategoryaidescription'}
+			</button>
+			<button type="button" class="btn btn-warning" id="btn-clear-debug-log" style="display: none;">
+				<i class="icon icon-trash"></i> {l s='Clear Log' mod='mlcategoryaidescription'}
+			</button>
+			<span id="debug-log-size" class="text-muted" style="margin-left: 15px;"></span>
+		</div>
+	</div>
+	<div id="debug-log-container" style="display: none; margin-top: 15px;">
+		<pre id="debug-log-content" style="max-height: 500px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 4px; font-size: 11px; font-family: 'Consolas', 'Monaco', monospace;"></pre>
+	</div>
 </div>
+
+<script type="text/javascript">
+(function() {
+	var ajaxUrl = window.mlcategoryai_ajax_url;
+	var viewBtn = document.getElementById('btn-view-debug-log');
+	var refreshBtn = document.getElementById('btn-refresh-debug-log');
+	var clearBtn = document.getElementById('btn-clear-debug-log');
+	var logContainer = document.getElementById('debug-log-container');
+	var logContent = document.getElementById('debug-log-content');
+	var logSize = document.getElementById('debug-log-size');
+
+	function loadLog() {
+		logContent.textContent = 'Loading...';
+
+		fetch(ajaxUrl, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: 'action=getDebugLog&lines=500'
+		})
+		.then(function(response) { return response.json(); })
+		.then(function(data) {
+			if (data.success) {
+				logContent.textContent = data.content || '(empty log)';
+				logSize.textContent = 'Size: ' + data.size_formatted;
+				// Scroll to bottom
+				logContent.scrollTop = logContent.scrollHeight;
+			} else {
+				logContent.textContent = 'Error: ' + (data.error || 'Unknown error');
+			}
+		})
+		.catch(function(error) {
+			logContent.textContent = 'Error loading log: ' + error;
+		});
+	}
+
+	viewBtn.addEventListener('click', function() {
+		logContainer.style.display = 'block';
+		refreshBtn.style.display = 'inline-block';
+		clearBtn.style.display = 'inline-block';
+		viewBtn.style.display = 'none';
+		loadLog();
+	});
+
+	refreshBtn.addEventListener('click', loadLog);
+
+	clearBtn.addEventListener('click', function() {
+		if (!confirm('{l s='Clear all debug logs?' mod='mlcategoryaidescription' js=1}')) return;
+
+		fetch(ajaxUrl, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: 'action=clearDebugLog'
+		})
+		.then(function(response) { return response.json(); })
+		.then(function(data) {
+			if (data.success) {
+				logContent.textContent = '(log cleared)';
+				logSize.textContent = 'Size: 0 B';
+			}
+		});
+	});
+})();
+</script>

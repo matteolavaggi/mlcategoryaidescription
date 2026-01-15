@@ -104,12 +104,72 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
                     $this->handleBenchmarkModel();
                     break;
 
+                case 'getDebugLog':
+                    $this->handleGetDebugLog();
+                    break;
+
+                case 'clearDebugLog':
+                    $this->handleClearDebugLog();
+                    break;
+
                 default:
                     $this->jsonResponse(['success' => false, 'error' => 'Unknown action: ' . $action]);
             }
         } catch (Exception $e) {
             $this->jsonResponse(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Get debug log contents
+     */
+    protected function handleGetDebugLog()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiLogger.php';
+
+        $lines = (int) Tools::getValue('lines', 200);
+        $content = MlCategoryAiLogger::getLogContents($lines);
+        $size = MlCategoryAiLogger::getLogSize();
+
+        $this->jsonResponse([
+            'success' => true,
+            'content' => $content,
+            'size' => $size,
+            'size_formatted' => $this->formatBytes($size),
+        ]);
+    }
+
+    /**
+     * Clear debug log
+     */
+    protected function handleClearDebugLog()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiLogger.php';
+
+        $result = MlCategoryAiLogger::clearLog();
+
+        $this->jsonResponse([
+            'success' => $result,
+            'message' => $result ? 'Log cleared' : 'Failed to clear log',
+        ]);
+    }
+
+    /**
+     * Format bytes to human readable
+     *
+     * @param int $bytes
+     *
+     * @return string
+     */
+    protected function formatBytes($bytes)
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+
+        return round($bytes, 2) . ' ' . $units[$pow];
     }
 
     /**

@@ -23,6 +23,8 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+require_once __DIR__ . '/MlCategoryAiLogger.php';
+
 /**
  * AI API Client for OpenAI and compatible endpoints
  */
@@ -312,7 +314,7 @@ class MlCategoryAiClient
         $headers = $this->buildHeaders();
         $startTime = microtime(true);
 
-        PrestaShopLogger::addLog('[MLCATAI] API request START - url=' . $url, 1);
+        MlCategoryAiLogger::debug('API request START - model=' . $this->model);
 
         $ch = curl_init();
 
@@ -332,7 +334,7 @@ class MlCategoryAiClient
         $curlError = curl_error($ch);
 
         $elapsed = round((microtime(true) - $startTime) * 1000);
-        PrestaShopLogger::addLog('[MLCATAI] API request END - ' . $elapsed . 'ms - httpCode=' . $httpCode, 1);
+        MlCategoryAiLogger::debug('API request END - ' . $elapsed . 'ms - httpCode=' . $httpCode);
 
         curl_close($ch);
 
@@ -341,6 +343,7 @@ class MlCategoryAiClient
 
         if ($curlError) {
             $this->lastError = 'cURL error: ' . $curlError;
+            MlCategoryAiLogger::error('cURL error: ' . $curlError);
 
             return false;
         }
@@ -353,7 +356,7 @@ class MlCategoryAiClient
             $this->lastError = $errorMessage;
 
             // Log API errors for debugging
-            PrestaShopLogger::addLog('[MLCATAI] API ERROR: ' . $errorMessage . ' | Model: ' . $this->model, 3);
+            MlCategoryAiLogger::error('API ERROR: ' . $errorMessage . ' | Model: ' . $this->model . ' | Response: ' . substr($response, 0, 500));
 
             return false;
         }

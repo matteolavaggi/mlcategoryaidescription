@@ -25,6 +25,7 @@ if (!defined('_PS_VERSION_')) {
 
 require_once dirname(__FILE__) . '/MlCategoryAiClient.php';
 require_once dirname(__FILE__) . '/MlCategoryAiPlaceholder.php';
+require_once dirname(__FILE__) . '/MlCategoryAiLogger.php';
 
 /**
  * Content generator for categories using AI
@@ -85,12 +86,13 @@ class MlCategoryAiGenerator
         $category = new Category((int) $idCategory, (int) $idLang);
         if (!Validate::isLoadedObject($category)) {
             $result['error'] = 'Category not found: ' . $idCategory;
+            MlCategoryAiLogger::error('Category not found: ' . $idCategory);
 
             return $result;
         }
 
         $t1 = microtime(true);
-        PrestaShopLogger::addLog('[MLCATAI] loadCategory took ' . round(($t1 - $t0) * 1000) . 'ms - cat=' . $idCategory, 1);
+        MlCategoryAiLogger::debug('loadCategory took ' . round(($t1 - $t0) * 1000) . 'ms - cat=' . $idCategory . ' (' . $category->name . ')');
 
         // Check if we should skip (fill_missing mode and field has content)
         if ($writeMode === Mlcategoryaidescription::WRITE_MODE_FILL_MISSING) {
@@ -99,6 +101,7 @@ class MlCategoryAiGenerator
                 $result['success'] = true;
                 $result['skipped'] = true;
                 $result['content'] = $existingContent;
+                MlCategoryAiLogger::debug('Skipped (fill_missing mode): cat=' . $idCategory . ' field=' . $fieldType);
 
                 return $result;
             }
@@ -109,6 +112,7 @@ class MlCategoryAiGenerator
         $prompt = $this->getPromptTemplate($fieldType, $idLang);
         if (empty($prompt)) {
             $result['error'] = 'No prompt template found for field: ' . $fieldType;
+            MlCategoryAiLogger::error('No prompt template for field=' . $fieldType . ' lang=' . $idLang);
 
             return $result;
         }
@@ -116,7 +120,7 @@ class MlCategoryAiGenerator
         // Resolve placeholders
         $placeholder = new MlCategoryAiPlaceholder($idCategory, $idLang, $this->idShop);
         $resolvedPrompt = $placeholder->resolve($prompt);
-        PrestaShopLogger::addLog('[MLCATAI] promptResolve took ' . round((microtime(true) - $t2) * 1000) . 'ms', 1);
+        MlCategoryAiLogger::debug('promptResolve took ' . round((microtime(true) - $t2) * 1000) . 'ms - promptLength=' . strlen($resolvedPrompt));
 
         // Append language and format instructions
         $languageName = $placeholder->resolve('{language_name}');
