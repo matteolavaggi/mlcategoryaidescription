@@ -92,13 +92,20 @@ class MlCategoryAiClient
      * Models that require max_completion_tokens instead of max_tokens
      * These are typically newer reasoning/mini models
      */
-    protected static $completionTokenModels = [
-        'o1',
-        'o1-mini',
-        'o1-preview',
-        'gpt-4o-mini',
-        'gpt-5-nano',
-        'gpt-5-mini',
+    /**
+     * Legacy models that still require max_tokens instead of max_completion_tokens
+     * Most newer models (2024+) use max_completion_tokens
+     */
+    protected static $legacyMaxTokensModels = [
+        'gpt-3.5-turbo',
+        'gpt-4',
+        'gpt-4-turbo',
+        'gpt-4-0125',
+        'gpt-4-1106',
+        'text-davinci',
+        'text-curie',
+        'text-babbage',
+        'text-ada',
     ];
 
     /**
@@ -133,8 +140,8 @@ class MlCategoryAiClient
 
     /**
      * Get the correct token limit parameter name for current model
-     * Newer models (o1, mini, nano) use max_completion_tokens
-     * Older models use max_tokens
+     * Default: max_completion_tokens (for newer models 2024+)
+     * Legacy: max_tokens (for older models like gpt-3.5, gpt-4)
      *
      * @return string 'max_completion_tokens' or 'max_tokens'
      */
@@ -142,15 +149,15 @@ class MlCategoryAiClient
     {
         $modelLower = strtolower($this->model);
 
-        // Check exact matches first
-        foreach (self::$completionTokenModels as $pattern) {
+        // Check if it's a legacy model that needs max_tokens
+        foreach (self::$legacyMaxTokensModels as $pattern) {
             if (strpos($modelLower, strtolower($pattern)) !== false) {
-                return 'max_completion_tokens';
+                return 'max_tokens';
             }
         }
 
-        // Default to max_tokens for standard models
-        return 'max_tokens';
+        // Default to max_completion_tokens for all newer models (2024+)
+        return 'max_completion_tokens';
     }
 
     /**
@@ -344,6 +351,9 @@ class MlCategoryAiClient
                 ? $errorData['error']['message']
                 : 'HTTP error ' . $httpCode;
             $this->lastError = $errorMessage;
+
+            // Log API errors for debugging
+            PrestaShopLogger::addLog('[MLCATAI] API ERROR: ' . $errorMessage . ' | Model: ' . $this->model, 3);
 
             return false;
         }
