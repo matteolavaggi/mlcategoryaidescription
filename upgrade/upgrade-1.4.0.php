@@ -74,21 +74,26 @@ function upgrade_module_1_4_0($module)
         @mkdir($logsDir, 0755, true);
     }
 
-    // Update default prompts - clear old ones and let module reinstall defaults
-    // Only update if prompts haven't been customized (check for old format)
-    $existingPrompt = $db->getValue(
-        'SELECT ptl.prompt_template FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template` pt
-        JOIN `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang` ptl ON pt.id_prompt_template = ptl.id_prompt_template
-        WHERE pt.field_type = "description" LIMIT 1'
+    // Check if prompts need updating (old format detection)
+    $idTemplate = (int) $db->getValue(
+        'SELECT id_prompt_template FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`
+        WHERE field_type = "description" LIMIT 1'
     );
 
-    // Check if it's the old format (doesn't contain "CONTEXT INFORMATION")
-    if ($existingPrompt && strpos($existingPrompt, 'CONTEXT INFORMATION') === false) {
-        // Old format detected - offer to update (for now, just log)
-        PrestaShopLogger::addLog(
-            '[MLCATAI] Upgrade 1.4.0: Old prompt format detected. Consider updating prompts manually for better results.',
-            2
+    if ($idTemplate) {
+        $existingPrompt = $db->getValue(
+            'SELECT prompt_template FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang`
+            WHERE id_prompt_template = ' . $idTemplate . ' LIMIT 1'
         );
+
+        // Check if it's the old format (doesn't contain "CONTEXT INFORMATION")
+        if ($existingPrompt && strpos($existingPrompt, 'CONTEXT INFORMATION') === false) {
+            // Old format detected - log for user awareness
+            PrestaShopLogger::addLog(
+                '[MLCATAI] Upgrade 1.4.0: Old prompt format detected. Consider updating prompts manually for better results.',
+                2
+            );
+        }
     }
 
     return true;
