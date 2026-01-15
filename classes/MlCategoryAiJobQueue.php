@@ -281,31 +281,32 @@ class MlCategoryAiJobQueue
      */
     protected function logCompletedJobStats($job, $lastBatchResult)
     {
-        $runStats = new MlCategoryAiRunStats();
         $parallelEnabled = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, true);
 
-        $runStats->startRun(
-            (int) $job['id_job'],
-            count($job['category_ids']),
-            count($job['language_ids']),
-            count($job['fields_to_generate']),
-            $job['write_mode'],
-            $parallelEnabled ? (int) Configuration::get(Mlcategoryaidescription::CONFIG_BATCH_SIZE) : 1
-        );
+        // Calculate execution time from job timestamps
+        $startedAt = strtotime($job['started_at']);
+        $completedAt = time();
+        $executionTimeMs = ($completedAt - $startedAt) * 1000;
 
-        // Add last batch metrics (we don't have accumulated data from previous batches)
-        $runStats->addRequestMetrics(
-            $lastBatchResult['tokens_input'],
-            $lastBatchResult['tokens_output'],
-            $lastBatchResult['time_ms']
-        );
-
-        // Complete with final item counts
-        $runStats->completeRun(
-            (int) $job['processed_items'] + $lastBatchResult['processed'],
-            $lastBatchResult['skipped'],
-            (int) $job['failed_items'] + $lastBatchResult['failed']
-        );
+        // Insert directly to have accurate timing
+        Db::getInstance()->insert('mlcategoryai_run_stats', [
+            'id_job' => (int) $job['id_job'],
+            'id_shop' => (int) Context::getContext()->shop->id,
+            'started_at' => pSQL($job['started_at']),
+            'completed_at' => date('Y-m-d H:i:s'),
+            'execution_time_ms' => (int) $executionTimeMs,
+            'categories_count' => count($job['category_ids']),
+            'languages_count' => count($job['language_ids']),
+            'fields_count' => count($job['fields_to_generate']),
+            'items_processed' => (int) $job['processed_items'] + $lastBatchResult['processed'],
+            'items_skipped' => (int) $lastBatchResult['skipped'],
+            'items_failed' => (int) $job['failed_items'] + $lastBatchResult['failed'],
+            'write_mode' => pSQL($job['write_mode']),
+            'tokens_input' => (int) $lastBatchResult['tokens_input'],
+            'tokens_output' => (int) $lastBatchResult['tokens_output'],
+            'parallel_requests' => $parallelEnabled ? (int) Configuration::get(Mlcategoryaidescription::CONFIG_BATCH_SIZE) : 1,
+            'avg_request_time_ms' => (int) $lastBatchResult['time_ms'],
+        ]);
     }
 
     /**
