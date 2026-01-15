@@ -178,9 +178,13 @@ class MlCategoryAiClient
         $requestData = [
             'model' => $this->model,
             'messages' => $messages,
-            'max_tokens' => $this->maxTokens,
             'temperature' => $this->temperature,
         ];
+
+        // Only add max_tokens if configured (some models like gpt-5-nano don't support it)
+        if ($this->maxTokens > 0) {
+            $requestData['max_tokens'] = $this->maxTokens;
+        }
 
         // Add prompt caching for OpenAI (reduces input token costs by up to 50%)
         if ($this->enablePromptCache && $this->provider === 'openai' && !empty($cacheKey)) {
@@ -428,9 +432,13 @@ class MlCategoryAiClient
             $requestData = [
                 'model' => $this->model,
                 'messages' => $messages,
-                'max_tokens' => $this->maxTokens,
                 'temperature' => $this->temperature,
             ];
+
+            // Only add max_tokens if configured
+            if ($this->maxTokens > 0) {
+                $requestData['max_tokens'] = $this->maxTokens;
+            }
 
             // Add prompt caching
             if ($this->enablePromptCache && $this->provider === 'openai' && !empty($req['cache_key'])) {

@@ -778,7 +778,7 @@ Requisiti:
                         'type' => 'text',
                         'label' => $this->l('Max Tokens'),
                         'name' => self::CONFIG_MAX_TOKENS,
-                        'desc' => $this->l('Maximum tokens per API request (affects response length).'),
+                        'desc' => $this->l('Maximum tokens per API request. Set to 0 to let the model decide (recommended for newer models like gpt-5-nano).'),
                         'class' => 'fixed-width-sm',
                     ],
                     [
@@ -786,13 +786,6 @@ Requisiti:
                         'label' => $this->l('Temperature'),
                         'name' => self::CONFIG_TEMPERATURE,
                         'desc' => $this->l('AI creativity (0.0 = focused, 2.0 = creative). Recommended: 0.7'),
-                        'class' => 'fixed-width-sm',
-                    ],
-                    [
-                        'type' => 'text',
-                        'label' => $this->l('Request Delay (seconds)'),
-                        'name' => self::CONFIG_REQUEST_DELAY,
-                        'desc' => $this->l('Delay between API requests to respect rate limits.'),
                         'class' => 'fixed-width-sm',
                     ],
                 ],
