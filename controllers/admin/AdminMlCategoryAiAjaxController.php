@@ -341,8 +341,15 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
      */
     protected function handleSavePrompts()
     {
-        $prompts = Tools::getValue('prompts');
+        $promptsRaw = Tools::getValue('prompts');
         $idShop = (int) Shop::getContextShopID();
+
+        // Decode JSON if sent as string
+        if (is_string($promptsRaw)) {
+            $prompts = json_decode($promptsRaw, true);
+        } else {
+            $prompts = $promptsRaw;
+        }
 
         if (empty($prompts) || !is_array($prompts)) {
             $this->jsonResponse(['success' => false, 'error' => 'No prompts data received']);

@@ -260,48 +260,126 @@ class Mlcategoryaidescription extends Module
         $defaultPrompts = [
             self::FIELD_DESCRIPTION => [
                 'name' => 'Default Description Prompt',
-                'template_en' => 'Write a compelling and SEO-friendly product category description for an e-commerce website.
+                'template_en' => 'Write a compelling and SEO-friendly category description for an e-commerce website for this category:
 
-Category: {category_name}
-Parent Category: {parent_category_name}
-Website: {site_name}
+Category name: {category_name}
+Parent Category name: {parent_category_name}
+Website name: {site_name}
 
-Products in this category include: {first_products:10}
+Some random products included in this category: {first_products:10}
 
 Requirements:
-- 150-300 words
+- 300 words
 - Include relevant keywords naturally
 - Highlight benefits and variety
-- Use engaging, professional tone
-- Do not mention prices or specific promotions',
-                'template_fr' => 'Rédigez une description de catégorie de produits attrayante et optimisée pour le SEO pour un site e-commerce.
+- Use best practice SEO writing skill
+- Do not mention prices or specific promotions
+- Do not focus on the products, instead focus on the category description',
+                'template_fr' => 'Rédigez une description de catégorie captivante et optimisée pour le SEO pour un site e-commerce :
 
-Catégorie : {category_name}
-Catégorie parente : {parent_category_name}
-Site web : {site_name}
+Nom de la catégorie : {category_name}
+Nom de la catégorie parente : {parent_category_name}
+Nom du site : {site_name}
 
-Produits dans cette catégorie : {first_products:10}
+Quelques produits inclus dans cette catégorie : {first_products:10}
 
 Exigences :
-- 150-300 mots
-- Inclure naturellement les mots-clés pertinents
-- Mettre en avant les avantages et la variété
-- Utiliser un ton engageant et professionnel
-- Ne pas mentionner les prix ou promotions spécifiques',
-                'template_it' => 'Scrivi una descrizione di categoria prodotti accattivante e SEO-friendly per un sito e-commerce.
+- 300 mots
+- Intégrer les mots-clés pertinents de manière naturelle
+- Mettre en avant les avantages et la variété de l\'offre
+- Utiliser les meilleures pratiques de rédaction SEO
+- Ne pas mentionner les prix ni les promotions spécifiques
+- Ne pas se concentrer sur les produits individuels, mais plutôt sur la description générale de la catégorie',
+                'template_it' => 'Scrivi una descrizione di categoria accattivante e ottimizzata SEO per un sito e-commerce:
 
-Categoria: {category_name}
-Categoria principale: {parent_category_name}
-Sito web: {site_name}
+Nome della categoria: {category_name}
+Nome della categoria padre: {parent_category_name}
+Nome del sito: {site_name}
 
-Prodotti in questa categoria: {first_products:10}
+Alcuni prodotti inclusi in questa categoria: {first_products:10}
 
 Requisiti:
-- 150-300 parole
-- Includere naturalmente le parole chiave rilevanti
-- Evidenziare i vantaggi e la varietà
-- Usare un tono coinvolgente e professionale
-- Non menzionare prezzi o promozioni specifiche',
+- 300 parole
+- Integrare le parole chiave pertinenti in modo naturale
+- Evidenziare i vantaggi e la varietà dell\'offerta
+- Utilizzare le migliori pratiche di scrittura SEO
+- Non menzionare prezzi né promozioni specifiche
+- Non concentrarsi sui singoli prodotti, ma sulla descrizione generale della categoria',
+                'template_de' => 'Schreiben Sie eine ansprechende und SEO-optimierte Kategoriebeschreibung für eine E-Commerce-Website:
+
+Kategoriename: {category_name}
+Übergeordnete Kategorie: {parent_category_name}
+Website-Name: {site_name}
+
+Einige Produkte in dieser Kategorie: {first_products:10}
+
+Anforderungen:
+- 300 Wörter
+- Relevante Keywords natürlich einbinden
+- Vorteile und Vielfalt des Angebots hervorheben
+- Best Practices für SEO-Texte anwenden
+- Keine Preise oder spezifische Aktionen erwähnen
+- Nicht auf einzelne Produkte fokussieren, sondern auf die allgemeine Kategoriebeschreibung',
+                'template_es' => 'Escribe una descripción de categoría atractiva y optimizada para SEO para un sitio de comercio electrónico:
+
+Nombre de la categoría: {category_name}
+Nombre de la categoría padre: {parent_category_name}
+Nombre del sitio: {site_name}
+
+Algunos productos incluidos en esta categoría: {first_products:10}
+
+Requisitos:
+- 300 palabras
+- Integrar las palabras clave relevantes de forma natural
+- Destacar las ventajas y la variedad de la oferta
+- Utilizar las mejores prácticas de redacción SEO
+- No mencionar precios ni promociones específicas
+- No centrarse en productos individuales, sino en la descripción general de la categoría',
+                'template_pt' => 'Escreva uma descrição de categoria atraente e otimizada para SEO para um site de e-commerce:
+
+Nome da categoria: {category_name}
+Nome da categoria pai: {parent_category_name}
+Nome do site: {site_name}
+
+Alguns produtos incluídos nesta categoria: {first_products:10}
+
+Requisitos:
+- 300 palavras
+- Integrar palavras-chave relevantes de forma natural
+- Destacar as vantagens e a variedade da oferta
+- Usar as melhores práticas de redação SEO
+- Não mencionar preços nem promoções específicas
+- Não focar em produtos individuais, mas na descrição geral da categoria',
+                'template_nl' => 'Schrijf een aantrekkelijke en SEO-geoptimaliseerde categoriebeschrijving voor een e-commerce website:
+
+Categorienaam: {category_name}
+Bovenliggende categorie: {parent_category_name}
+Websitenaam: {site_name}
+
+Enkele producten in deze categorie: {first_products:10}
+
+Vereisten:
+- 300 woorden
+- Relevante zoekwoorden natuurlijk integreren
+- Voordelen en variëteit van het aanbod benadrukken
+- Beste SEO-schrijfpraktijken toepassen
+- Geen prijzen of specifieke promoties vermelden
+- Niet focussen op individuele producten, maar op de algemene categoriebeschrijving',
+                'template_pl' => 'Napisz atrakcyjny i zoptymalizowany pod kątem SEO opis kategorii dla sklepu internetowego:
+
+Nazwa kategorii: {category_name}
+Nazwa kategorii nadrzędnej: {parent_category_name}
+Nazwa strony: {site_name}
+
+Niektóre produkty w tej kategorii: {first_products:10}
+
+Wymagania:
+- 300 słów
+- Naturalnie integrować odpowiednie słowa kluczowe
+- Podkreślać zalety i różnorodność oferty
+- Stosować najlepsze praktyki pisania SEO
+- Nie wspominać cen ani konkretnych promocji
+- Nie skupiać się na pojedynczych produktach, lecz na ogólnym opisie kategorii',
             ],
             self::FIELD_META_TITLE => [
                 'name' => 'Default Meta Title Prompt',
@@ -335,6 +413,26 @@ Requisiti:
 - Includere il nome della categoria e il brand se possibile
 - Rendere il titolo accattivante per i risultati di ricerca
 - Restituire SOLO il testo del meta title, senza spiegazioni',
+                'template_de' => 'Generieren Sie einen SEO-optimierten Meta-Titel für diese E-Commerce-Kategorieseite.
+
+Kategorie: {category_name}
+Website: {site_name}
+
+Anforderungen:
+- Maximal 60 Zeichen
+- Kategoriename und Marke einbeziehen, wenn Platz vorhanden
+- Ansprechend für Suchergebnisse gestalten
+- NUR den Meta-Titel-Text zurückgeben, keine Erklärungen',
+                'template_es' => 'Genera un meta title optimizado para SEO para esta página de categoría de e-commerce.
+
+Categoría: {category_name}
+Sitio web: {site_name}
+
+Requisitos:
+- Máximo 60 caracteres
+- Incluir nombre de categoría y marca si hay espacio
+- Hacerlo atractivo para resultados de búsqueda
+- Devolver SOLO el texto del meta title, sin explicaciones',
             ],
             self::FIELD_META_DESCRIPTION => [
                 'name' => 'Default Meta Description Prompt',
