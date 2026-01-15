@@ -200,12 +200,15 @@
                     if (response.completed) {
                         self.isProcessing = false;
                         self.log('');
-                        self.log('=== Generation Complete ===');
+                        self.log('=====================================');
+                        self.log('=== GENERATION COMPLETE ===');
+                        self.log('=====================================');
                         self.log('Total processed: ' + response.processed);
                         self.log('Total failed: ' + response.failed);
+                        self.log('');
+                        self.log('Click "Close & Reload" to update the page.');
                         self.updateProgress(100, response.processed, response.total);
-                        alert('Generation complete!\n\nProcessed: ' + response.processed + '\nFailed: ' + response.failed);
-                        location.reload();
+                        self.showCompletionButtons();
                     } else {
                         // Continue with next batch
                         setTimeout(function () {
@@ -325,6 +328,45 @@
                 var timestamp = new Date().toLocaleTimeString();
                 logDiv.innerHTML += '[' + timestamp + '] ' + message + '\n';
                 logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        },
+
+        showCompletionButtons: function () {
+            var logDiv = document.getElementById('generation-log');
+            if (logDiv) {
+                // Add completion buttons below the log
+                var buttonsDiv = document.createElement('div');
+                buttonsDiv.style.cssText = 'margin-top: 15px; text-align: center; padding: 15px; background: #dff0d8; border-radius: 4px;';
+                buttonsDiv.innerHTML =
+                    '<strong style="color: #3c763d; font-size: 16px;">✓ Generation Complete!</strong><br><br>' +
+                    '<button type="button" class="btn btn-success btn-lg" id="btn-close-reload" style="margin-right: 10px;">' +
+                    '<i class="icon icon-refresh"></i> Close & Reload Page</button>' +
+                    '<button type="button" class="btn btn-default" id="btn-view-log-after">' +
+                    '<i class="icon icon-file-text-o"></i> View Full Debug Log</button>';
+
+                logDiv.parentNode.appendChild(buttonsDiv);
+
+                // Bind button events
+                document.getElementById('btn-close-reload').addEventListener('click', function () {
+                    location.reload();
+                });
+
+                document.getElementById('btn-view-log-after').addEventListener('click', function () {
+                    // Scroll to debug log section and open it
+                    var viewLogBtn = document.getElementById('btn-view-debug-log');
+                    if (viewLogBtn) {
+                        viewLogBtn.scrollIntoView({ behavior: 'smooth' });
+                        viewLogBtn.click();
+                    }
+                });
+
+                // Remove active striped animation from progress bar
+                var progressBar = document.getElementById('generation-progress-bar');
+                if (progressBar) {
+                    progressBar.classList.remove('active');
+                    progressBar.classList.remove('progress-bar-striped');
+                    progressBar.classList.add('progress-bar-success');
+                }
             }
         },
 
