@@ -516,6 +516,8 @@ Requisiti:
             'languages' => Language::getLanguages(true),
             'categories' => $this->getCategoriesForSelect(),
             'current_job' => $this->getCurrentRunningJob(),
+            'run_stats' => MlCategoryAiRunStats::getRecentRuns(10),
+            'run_stats_aggregate' => MlCategoryAiRunStats::getAggregateStats(),
         ]);
 
         // Add header info panel FIRST
@@ -523,6 +525,9 @@ Requisiti:
 
         // Add module-specific templates
         $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/configure.tpl');
+
+        // Add performance stats panel
+        $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/performance_stats.tpl');
 
         return $output . $this->renderForm();
     }

@@ -251,6 +251,9 @@ class MlCategoryAiJobQueue
         if ($isCompleted) {
             $this->updateJobStatus($idJob, self::STATUS_COMPLETED);
             $this->updateJob($idJob, ['completed_at' => date('Y-m-d H:i:s')]);
+
+            // Log final run stats
+            $this->logCompletedJobStats($job, $batchResult);
         }
 
         return [
@@ -268,6 +271,41 @@ class MlCategoryAiJobQueue
             'batch_time_ms' => $batchResult['time_ms'],
             'parallel' => $useParallel && count($batchItems) > 1,
         ];
+    }
+
+    /**
+     * Log stats for a completed job
+     *
+     * @param array $job Job data
+     * @param array $lastBatchResult Last batch result with token counts
+     */
+    protected function logCompletedJobStats($job, $lastBatchResult)
+    {
+        $runStats = new MlCategoryAiRunStats();
+        $parallelEnabled = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, true);
+
+        $runStats->startRun(
+            (int) $job['id_job'],
+            count($job['category_ids']),
+            count($job['language_ids']),
+            count($job['fields_to_generate']),
+            $job['write_mode'],
+            $parallelEnabled ? (int) Configuration::get(Mlcategoryaidescription::CONFIG_BATCH_SIZE) : 1
+        );
+
+        // Add last batch metrics (we don't have accumulated data from previous batches)
+        $runStats->addRequestMetrics(
+            $lastBatchResult['tokens_input'],
+            $lastBatchResult['tokens_output'],
+            $lastBatchResult['time_ms']
+        );
+
+        // Complete with final item counts
+        $runStats->completeRun(
+            (int) $job['processed_items'] + $lastBatchResult['processed'],
+            $lastBatchResult['skipped'],
+            (int) $job['failed_items'] + $lastBatchResult['failed']
+        );
     }
 
     /**

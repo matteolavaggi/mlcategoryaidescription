@@ -36,6 +36,68 @@ When executing PrestaShop module commands:
 
 ---
 
+## 🆕 Starting a New Version Branch
+
+When creating a new version branch, **ALWAYS update the version in these files**:
+
+### Files to Update
+
+| File | Property to Update |
+|------|-------------------|
+| `mlcategoryaidescription.php` | `$this->version = 'X.Y.Z';` |
+| `config.xml` | `<version><![CDATA[X.Y.Z]]></version>` |
+
+### Create Branch and Update Version (Git Bash)
+
+```bash
+# 1. Create new branch from current
+git checkout -b 1.4.0
+
+# 2. Update version in main module file
+sed -i "s/\$this->version = '[0-9.]*';/\$this->version = '1.4.0';/" mlcategoryaidescription.php
+
+# 3. Update version in config.xml
+sed -i 's/<version><!\[CDATA\[[0-9.]*\]\]>/<version><![CDATA[1.4.0]]>/' config.xml
+
+# 4. Create upgrade script (if needed)
+cp upgrade/upgrade-1.3.0.php upgrade/upgrade-1.4.0.php
+sed -i 's/upgrade_module_1_3_0/upgrade_module_1_4_0/g' upgrade/upgrade-1.4.0.php
+sed -i 's/version 1.3.0/version 1.4.0/g' upgrade/upgrade-1.4.0.php
+
+# 5. Commit version bump
+git add -A && git commit -m "chore: bump version to 1.4.0"
+```
+
+### Create Branch and Update Version (PowerShell)
+
+```powershell
+# 1. Create new branch
+git checkout -b 1.4.0
+
+# 2. Update version in main file
+(Get-Content mlcategoryaidescription.php) -replace "\`$this->version = '[0-9.]+';", "`$this->version = '1.4.0';" | Set-Content mlcategoryaidescription.php
+
+# 3. Update version in config.xml
+(Get-Content config.xml) -replace '<version><!\[CDATA\[[0-9.]+\]\]>', '<version><![CDATA[1.4.0]]>' | Set-Content config.xml
+
+# 4. Copy and update upgrade script
+Copy-Item upgrade\upgrade-1.3.0.php upgrade\upgrade-1.4.0.php
+(Get-Content upgrade\upgrade-1.4.0.php) -replace 'upgrade_module_1_3_0', 'upgrade_module_1_4_0' -replace 'version 1.3.0', 'version 1.4.0' | Set-Content upgrade\upgrade-1.4.0.php
+
+# 5. Commit
+git add -A; git commit -m "chore: bump version to 1.4.0"
+```
+
+### Version Bump Checklist
+
+- [ ] Update `$this->version` in main PHP file
+- [ ] Update `<version>` in config.xml  
+- [ ] Create upgrade script if DB changes needed
+- [ ] Update upgrade function name to match version
+- [ ] Commit with message `chore: bump version to X.Y.Z`
+
+---
+
 ## 🪟 Windows PowerShell Commands
 
 ### Variables (set these first)
