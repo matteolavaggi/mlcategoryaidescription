@@ -266,67 +266,42 @@ WHERE id_job = X
 
 ### Overview
 
-Based on OpenAI API specifications and current module architecture, here's a phased improvement plan organized by component.
+Based on OpenAI API specifications and critical analysis of the current architecture, here's the revised improvement plan with honest assessments.
 
 ---
 
-### 📊 Phase 1: SQL Optimizations
+### ❌ Phase 1: SQL Optimizations (DEPRIORITIZED)
 
-**Goal:** Reduce database round-trips and improve query efficiency.
+**Reality Check:** SQL operations take ~5-10ms per item. API calls take ~3000ms per item. SQL is NOT the bottleneck.
 
-| Improvement | Current | Proposed | Speed Gain |
-|-------------|---------|----------|------------|
-| **Bulk Category Loading** | 1 query per category | Load all categories in batch | ~50% fewer queries |
-| **Prepared Statements** | Dynamic SQL strings | PDO prepared statements | Faster execution |
-| **Index Optimization** | Default indexes | Add composite indexes on (id_category, id_lang, id_shop) | Faster lookups |
-| **Batch Updates** | 1 UPDATE per field | Batch multiple UPDATEs in transaction | ~80% fewer queries |
-| **Prompt Caching** | Query prompt per request | Cache prompts in memory for job duration | ~30% fewer queries |
+| Proposed Improvement | Assessment | Verdict |
+|---------------------|------------|---------|
+| **Bulk Category Loading** | PrestaShop ObjectModel requires individual loading for `update()` method | ❌ Skip |
+| **Prepared Statements** | PrestaShop Db class doesn't support natively | ❌ Skip |
+| **Batch Transactions** | Already using direct SQL. Saves ~1ms per item | ⚠️ Low priority |
+| **In-memory Prompt Cache** | Could cache templates for job duration | ⚠️ Marginal gain |
 
-**Implementation Details:**
-
-```php
-// BEFORE: 1 query per category (N queries)
-foreach ($categoryIds as $id) {
-    $category = new Category($id, $idLang);
-}
-
-// AFTER: Bulk load all categories (1 query)
-$sql = 'SELECT * FROM ps_category c
-        JOIN ps_category_lang cl ON c.id_category = cl.id_category
-        WHERE c.id_category IN (' . implode(',', array_map('intval', $categoryIds)) . ')
-        AND cl.id_lang = ' . (int)$idLang;
-$categories = Db::getInstance()->executeS($sql);
-```
-
-```php
-// BEFORE: 1 UPDATE per category field
-foreach ($results as $result) {
-    Db::getInstance()->update('category_lang', ['description' => $result['content']], ...);
-}
-
-// AFTER: Batch UPDATE with transaction
-Db::getInstance()->execute('START TRANSACTION');
-foreach ($results as $result) {
-    // Queue updates
-}
-Db::getInstance()->execute('COMMIT');
-```
-
-**Estimated Impact:** 40-60% reduction in SQL overhead
+**Conclusion:** Focus on the real bottleneck - API latency.
 
 ---
 
-### ⚙️ Phase 2: Processing Optimizations
+### ✅ Phase 2: Processing Optimizations (HIGH PRIORITY)
 
-**Goal:** Improve orchestration and reduce idle time.
+**Goal:** Reduce total time by parallelizing API calls.
 
-| Improvement | Current | Proposed | Speed Gain |
-|-------------|---------|----------|------------|
-| **Parallel API Calls** | 1 request at a time | 3-5 concurrent requests | 3-5x faster |
-| **Server-side Queue** | Client orchestration | PHP background worker | No browser needed |
-| **Smarter Batching** | Random order | Group by field type (same prompt) | Better caching |
-| **Early Exit** | Process all items | Skip if category unchanged | Variable savings |
-| **Streaming Response** | Wait for full response | Process streamed chunks | ~30% faster perceived |
+#### 🔥 Priority 1: Parallel API Calls with curl_multi
+
+**Analysis:**
+- Current: 5 items × 3 seconds each = 15 seconds per batch
+- With curl_multi: 5 items in parallel = 3 seconds per batch
+- **Speedup: 5x faster**
+
+| Question | Answer |
+|----------|--------|
+| Rate limit safe? | ✅ Yes - OpenAI Tier 1 = 500 RPM, 5 parallel = 300/min |
+| Memory impact? | ✅ Minimal - ~10KB for 5 handles |
+| Error handling? | ⚠️ More complex - handle partial failures |
+| PHP timeout risk? | ✅ Safe - parallel runs in same time as single |
 
 **Parallel Processing Architecture:**
 
@@ -379,115 +354,123 @@ foreach ($handles as $ch) {
 
 **Estimated Impact:** 3-5x faster processing
 
+#### ⚠️ Priority 2: Server-side Queue (Future Feature)
+
+| Question | Answer |
+|----------|--------|
+| Better than client-side? | ✅ Browser can close |
+| CRON availability? | ⚠️ Shared hosting may limit |
+| Progress visibility? | ⚠️ Needs polling |
+| Complexity? | ⚠️ Medium-High |
+
+**Verdict:** Good for large catalogs (1000+), but current approach works for most. Defer to future version.
+
 ---
 
-### 🌐 Phase 3: API Optimizations
+### ✅ Phase 3: API Optimizations (REVISED)
 
-**Goal:** Leverage OpenAI API features for speed and cost savings.
+**Critical Assessment of Each Feature:**
 
-| Improvement | Current | Proposed | Benefit |
-|-------------|---------|----------|---------|
-| **Batch API** | Sync requests | Async batch (24h window) | **50% cost savings** |
-| **Streaming** | Wait for complete response | Stream tokens as generated | Faster time-to-first-byte |
-| **Prompt Caching** | No caching | Use `prompt_cache_key` | **50% input token cost** |
-| **Lower max_tokens** | 1000 tokens | Dynamic based on field type | Faster responses |
-| **Temperature 0** | Temperature 0.7 | Temperature 0 for deterministic | Slightly faster |
+#### 🔥 Priority 1: Prompt Caching (prompt_cache_key)
 
-#### OpenAI Batch API (50% Discount)
-
-For large catalogs (100+ categories), use the Batch API for asynchronous processing at 50% discount:
-
-```
-Workflow:
-1. Create JSONL file with all requests
-2. Upload file to OpenAI
-3. Create batch job
-4. Poll for completion (within 24 hours)
-5. Download results and update categories
-```
-
-**JSONL Input Format:**
-```jsonl
-{"custom_id": "cat-1-lang-1-desc", "method": "POST", "url": "/v1/chat/completions", "body": {"model": "gpt-4o-mini", "messages": [...]}}
-{"custom_id": "cat-1-lang-1-meta", "method": "POST", "url": "/v1/chat/completions", "body": {"model": "gpt-4o-mini", "messages": [...]}}
-{"custom_id": "cat-2-lang-1-desc", "method": "POST", "url": "/v1/chat/completions", "body": {"model": "gpt-4o-mini", "messages": [...]}}
-```
-
-**Benefits:**
-- 50% cost reduction
-- No rate limit concerns
-- Process 50,000 requests per batch
-- Up to 200 MB per batch file
-
-#### Prompt Caching
-
-OpenAI automatically caches prompt prefixes. Optimize by using consistent system prompts:
-
-```php
-// Use prompt_cache_key for similar requests
-$requestData = [
-    'model' => 'gpt-4o-mini',
-    'messages' => [...],
-    'prompt_cache_key' => 'mlcategoryai-' . $fieldType,  // Group by field type
-    'prompt_cache_retention' => '24h',  // Extended caching
-];
-```
-
-**Benefit:** Up to 50% reduction in input token costs for cached prompts
-
-#### Streaming Responses
-
-Enable streaming for faster perceived performance:
+| Question | Answer |
+|----------|--------|
+| Available? | ✅ Yes, current API |
+| How it works? | OpenAI caches identical prompt prefixes |
+| Our prompts similar? | ✅ Yes - same template, different category names |
+| Implementation effort? | ✅ Very low - add one parameter |
+| Savings? | 25-50% on input tokens |
 
 ```php
 $requestData = [
     'model' => 'gpt-4o-mini',
     'messages' => [...],
-    'stream' => true,
-    'stream_options' => ['include_usage' => true],
+    'prompt_cache_key' => 'mlcategoryai-' . $fieldType,
+    'prompt_cache_retention' => '24h',
 ];
 ```
 
-**Benefit:** See tokens as they're generated, ~30% faster time-to-first-byte
-
-#### Optimized max_tokens by Field Type
-
-| Field Type | Current | Optimized | Savings |
-|------------|---------|-----------|---------|
-| description | 1000 | 800 | 20% |
-| meta_title | 1000 | 100 | 90% |
-| meta_description | 1000 | 200 | 80% |
-| meta_keywords | 1000 | 150 | 85% |
-
-**Estimated Impact:** 30-50% cost reduction, 20-40% faster responses
+**Verdict:** ✅ **IMPLEMENT NOW** - Low effort, high savings.
 
 ---
 
-### 📋 Implementation Roadmap
+#### ⚠️ Priority 2: Dynamic max_tokens
 
-| Phase | Focus | Effort | Impact | Priority |
-|-------|-------|--------|--------|----------|
-| **1.1** | Bulk category loading | Low | Medium | High |
-| **1.2** | Prompt caching in memory | Low | Medium | High |
-| **1.3** | Batch UPDATE transactions | Medium | Medium | Medium |
-| **2.1** | Parallel API calls (curl_multi) | Medium | High | High |
-| **2.2** | Dynamic max_tokens | Low | Medium | High |
-| **2.3** | Server-side queue (CRON) | High | High | Medium |
-| **3.1** | OpenAI Batch API | High | Very High | Medium |
-| **3.2** | Prompt cache key | Low | Medium | Medium |
-| **3.3** | Streaming responses | Medium | Low | Low |
+**Reality Check:** max_tokens is a CAP, not a speed setting.
+
+| Question | Answer |
+|----------|--------|
+| Does lower max_tokens = faster? | ❌ No - speed depends on ACTUAL tokens generated |
+| Does it save money? | ❌ No - you're charged for actual output, not max |
+| What's the benefit? | ✅ Safety - prevents runaway responses |
+
+**Safe Values by Field Type:**
+
+| Field | Actual Output | Safe max_tokens |
+|-------|---------------|-----------------|
+| description | 200-400 tokens | 500 |
+| meta_title | 10-20 tokens | 50 |
+| meta_description | 30-50 tokens | 100 |
+
+**Verdict:** ⚠️ Implement for **safety**, not speed.
 
 ---
 
-### 🎯 Expected Results After Optimization
+#### ❌ Skip: Streaming
 
-| Metric | Current | After Phase 1 | After Phase 2 | After Phase 3 |
-|--------|---------|---------------|---------------|---------------|
-| **100 items time** | ~10 min | ~8 min | ~3 min | ~3 min |
-| **1000 items time** | ~100 min | ~80 min | ~25 min | 24h (batch) |
-| **SQL queries** | ~500 | ~100 | ~100 | ~100 |
-| **API cost** | $X | $X | $X | **$0.5X** |
-| **Browser required** | Yes | Yes | No | No |
+| Question | Answer |
+|----------|--------|
+| Does it speed up total time? | ❌ No - same compute time |
+| When is it useful? | Real-time display of generation |
+| Our use case? | Batch processing - user doesn't see tokens |
+| Complexity? | High - SSE handling, chunked parsing |
+
+**Verdict:** ❌ **SKIP** - Adds complexity with zero benefit for batch processing.
+
+---
+
+#### ⚠️ Skip for Now: OpenAI Batch API
+
+| Question | Answer |
+|----------|--------|
+| Cost savings? | ✅ 50% discount |
+| Processing time? | ❌ Up to 24 hours |
+| User expectation? | Users want instant results |
+| When useful? | Very large catalogs (1000+) |
+
+**Verdict:** ⚠️ **NICHE** - Offer as optional "Economy Mode" for cost-conscious users with large catalogs.
+
+---
+
+### 📋 Revised Implementation Roadmap
+
+Based on critical analysis, here's the corrected priority order:
+
+| Priority | Feature | Effort | Impact | Status |
+|----------|---------|--------|--------|--------|
+| **🔥 1** | Parallel curl_multi | Medium | **5x faster** | To implement |
+| **🔥 2** | prompt_cache_key | Low | **25-50% cost savings** | To implement |
+| **3** | Dynamic max_tokens per field | Low | Safety | To implement |
+| *Future* | Server-side CRON queue | High | UX improvement | v2.0 |
+| *Future* | Batch API "Economy Mode" | High | Cost option | v2.0 |
+
+### ❌ Removed from Plan
+
+| Feature | Why Removed |
+|---------|-------------|
+| SQL Bulk Loading | SQL is 5ms vs API 3000ms - not the bottleneck |
+| Prepared Statements | PrestaShop doesn't support natively |
+| Streaming | No benefit for batch processing |
+
+---
+
+### 🎯 Expected Results After Implementation
+
+| Metric | Current | After curl_multi + cache |
+|--------|---------|--------------------------|
+| **100 items time** | ~10 min | **~2 min** |
+| **API cost** | $X | **~$0.70X** (30% savings) |
+| **Browser required** | Yes | Yes (CRON in v2.0) |
 
 ---
 
