@@ -148,7 +148,7 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
             $provider ?: 'openai',
             $model,
             0, // No max tokens limit for benchmark
-            0.7
+            1.0 // Use default temperature (mini/nano models only support 1.0)
         );
 
         $startTime = microtime(true);
