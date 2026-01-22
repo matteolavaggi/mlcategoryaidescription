@@ -43,7 +43,17 @@ if (!defined('_PS_VERSION_')) { exit; }
 1. **Code** → Standards auto-applied
 2. **Commit** → `feat:`, `fix:`, `docs:`, `refactor:`
 3. **Test** → `php bin/console prestashop:module upgrade modulename`
-4. **Release** → Run `ps-validator-agent` checklist
+4. **Release** → Update CHANGELOG.md, create version branch, run validator
+
+## Version & Branch Rules
+
+**⚠️ CRITICAL: Branch name MUST match module version!**
+
+When releasing a new version:
+1. Update `CHANGELOG.md` with new version section
+2. Update version in `modulename.php` and `config.xml`
+3. Create branch with version number (e.g., `1.4.2`)
+4. Commit and push
 
 ## Module Structure
 ```

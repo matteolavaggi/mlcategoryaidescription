@@ -16,11 +16,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-detect stuck jobs (no updates for 5+ minutes)
 - Delete job functionality
 - Menu entry under Catalog in back-office
+- CHANGELOG.md for version history
+- Build tools in `.github/tools/` (index.sh, zip.sh)
+- Consolidated coding standards documentation
+- Pre-release validator agent instructions
 
 ### Fixed
 - Exit at end of cron to prevent Smarty error
 - Remove duplicate LIMIT 1 in getActiveJob SQL
 - Background mode job creation not auto-resuming
+- PrestaShop validator: Context::getContext()->shop->id → Shop::getContextShopID()
+- PrestaShop validator: Configuration::get() param order for defaults
+- PrestaShop validator: Tools::link_rewrite() → Tools::str2url()
+- PrestaShop validator: Tab::active type (bool not int)
+- PrestaShop validator: meta_keywords property access with isset() check
+- PrestaShop validator: Smarty escaping (intval/floatval before number_format)
+- PrestaShop validator: _PS_VERSION_ check in all index.php files
+
+### Changed
+- Moved zip.sh and index.sh to .github/tools/ (run in WSL)
 
 ## [1.4.1] - 2026-01-22
 

@@ -44,65 +44,88 @@ When executing PrestaShop module commands:
 
 ---
 
-## 🆕 Starting a New Version Branch
+## 🆕 Version & Branch Workflow
 
-When creating a new version branch, **ALWAYS update the version in these files**:
+**CRITICAL RULE**: Branch name MUST match module version. When you update the module version, you MUST create a new branch.
 
-### Files to Update
+### Workflow Steps
+
+1. **Update CHANGELOG.md** - Add new version entry with changes
+2. **Update module version** - In `mlcategoryaidescription.php` and `config.xml`
+3. **Create upgrade script** - If database changes needed
+4. **Create new branch** - Branch name = version number (e.g., `1.4.2`)
+5. **Commit and push** - With conventional commit message
+
+### Files to Update for Each Version
 
 | File | Property to Update |
 |------|-------------------|
+| `CHANGELOG.md` | Add `## [X.Y.Z] - YYYY-MM-DD` section |
 | `mlcategoryaidescription.php` | `$this->version = 'X.Y.Z';` |
 | `config.xml` | `<version><![CDATA[X.Y.Z]]></version>` |
+| `upgrade/upgrade-X.Y.Z.php` | Create if DB changes needed |
 
-### Create Branch and Update Version (Git Bash)
+### Create New Version Branch (Git Bash/WSL)
 
 ```bash
-# 1. Create new branch from current
-git checkout -b 1.4.0
+VERSION="1.4.2"
 
-# 2. Update version in main module file
-sed -i "s/\$this->version = '[0-9.]*';/\$this->version = '1.4.0';/" mlcategoryaidescription.php
+# 1. Update CHANGELOG.md (add new version section at top)
 
-# 3. Update version in config.xml
-sed -i 's/<version><!\[CDATA\[[0-9.]*\]\]>/<version><![CDATA[1.4.0]]>/' config.xml
+# 2. Update version in module files
+sed -i "s/\$this->version = '[0-9.]*';/\$this->version = '$VERSION';/" mlcategoryaidescription.php
+sed -i "s/<version><!\[CDATA\[[0-9.]*\]\]>/<version><![CDATA[$VERSION]]>/" config.xml
 
-# 4. Create upgrade script (if needed)
-cp upgrade/upgrade-1.3.0.php upgrade/upgrade-1.4.0.php
-sed -i 's/upgrade_module_1_3_0/upgrade_module_1_4_0/g' upgrade/upgrade-1.4.0.php
-sed -i 's/version 1.3.0/version 1.4.0/g' upgrade/upgrade-1.4.0.php
+# 3. Create upgrade script if needed
+# cp upgrade/upgrade-1.4.1.php upgrade/upgrade-$VERSION.php
 
-# 5. Commit version bump
-git add -A && git commit -m "chore: bump version to 1.4.0"
+# 4. Create new branch matching version
+git checkout -b $VERSION
+
+# 5. Commit all changes
+git add -A && git commit -m "chore: release version $VERSION"
+
+# 6. Push branch
+git push -u origin $VERSION
 ```
 
-### Create Branch and Update Version (PowerShell)
+### Create New Version Branch (PowerShell)
 
 ```powershell
-# 1. Create new branch
-git checkout -b 1.4.0
+$VERSION = "1.4.2"
 
-# 2. Update version in main file
-(Get-Content mlcategoryaidescription.php) -replace "\`$this->version = '[0-9.]+';", "`$this->version = '1.4.0';" | Set-Content mlcategoryaidescription.php
+# 1. Update CHANGELOG.md (add new version section at top)
 
-# 3. Update version in config.xml
-(Get-Content config.xml) -replace '<version><!\[CDATA\[[0-9.]+\]\]>', '<version><![CDATA[1.4.0]]>' | Set-Content config.xml
+# 2. Update version in module files
+(Get-Content mlcategoryaidescription.php) -replace "\`$this->version = '[0-9.]+';", "`$this->version = '$VERSION';" | Set-Content mlcategoryaidescription.php
+(Get-Content config.xml) -replace '<version><!\[CDATA\[[0-9.]+\]\]>', "<version><![CDATA[$VERSION]]>" | Set-Content config.xml
 
-# 4. Copy and update upgrade script
-Copy-Item upgrade\upgrade-1.3.0.php upgrade\upgrade-1.4.0.php
-(Get-Content upgrade\upgrade-1.4.0.php) -replace 'upgrade_module_1_3_0', 'upgrade_module_1_4_0' -replace 'version 1.3.0', 'version 1.4.0' | Set-Content upgrade\upgrade-1.4.0.php
+# 3. Create new branch matching version
+git checkout -b $VERSION
 
-# 5. Commit
-git add -A; git commit -m "chore: bump version to 1.4.0"
+# 4. Commit all changes
+git add -A; git commit -m "chore: release version $VERSION"
+
+# 5. Push branch
+git push -u origin $VERSION
 ```
 
 ### Version Bump Checklist
 
+- [ ] Update CHANGELOG.md with new version and changes
 - [ ] Update `$this->version` in main PHP file
 - [ ] Update `<version>` in config.xml  
 - [ ] Create upgrade script if DB changes needed
-- [ ] Update upgrade function name to match version
-- [ ] Commit with message `chore: bump version to X.Y.Z`
+- [ ] Create new branch with version number as name
+- [ ] Commit with message `chore: release version X.Y.Z`
+- [ ] Push branch to origin
+
+### ⚠️ Common Mistakes to Avoid
+
+- ❌ Updating module version without creating new branch
+- ❌ Branch name different from module version
+- ❌ Forgetting to update CHANGELOG.md
+- ❌ Committing version changes to wrong branch
 
 ---
 
