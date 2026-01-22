@@ -457,7 +457,7 @@ class MlcategoryaidescriptionAjaxModuleFrontController extends ModuleFrontContro
             ]);
         }
 
-        $idShop = (int) Context::getContext()->shop->id;
+        $idShop = (int) Shop::getContextShopID();
         $db = Db::getInstance();
 
         foreach ($prompts as $fieldType => $languages) {

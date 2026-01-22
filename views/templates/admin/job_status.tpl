@@ -72,7 +72,7 @@
 									{assign var="progress_pct" value=($job.processed_items / $job.total_items * 100)|round}
 								{/if}
 								<div class="progress-bar {if $job.status == 'completed'}progress-bar-success{elseif $job.status == 'failed'}progress-bar-danger{else}progress-bar-info{/if}"
-									role="progressbar" style="width: {$progress_pct}%">
+									role="progressbar" style="width: {$progress_pct|intval}%">
 								</div>
 							</div>
 							<small>{$job.processed_items|intval} / {$job.total_items|intval}</small>

@@ -130,7 +130,7 @@ class Mlcategoryaidescription extends Module
         foreach ($defaults as $key => $defaultValue) {
             // Only set if config doesn't exist or is empty (except for booleans)
             $existingValue = Configuration::get($key);
-            if ($existingValue === false || $existingValue === null || $existingValue === '') {
+            if ($existingValue === false || $existingValue === '') {
                 Configuration::updateValue($key, $defaultValue);
             }
         }
@@ -164,7 +164,7 @@ class Mlcategoryaidescription extends Module
         $ajaxTab->class_name = 'AdminMlCategoryAiAjax';
         $ajaxTab->module = $this->name;
         $ajaxTab->id_parent = -1; // Hidden tab
-        $ajaxTab->active = 1;
+        $ajaxTab->active = true;
 
         foreach (Language::getLanguages(true) as $lang) {
             $ajaxTab->name[$lang['id_lang']] = 'ML Category AI AJAX';
@@ -184,7 +184,7 @@ class Mlcategoryaidescription extends Module
         $menuTab->module = $this->name;
         $menuTab->id_parent = $catalogTabId;
         $menuTab->position = 99; // At the bottom of Catalog menu
-        $menuTab->active = 1;
+        $menuTab->active = true;
         $menuTab->icon = 'category'; // Material icon
 
         foreach (Language::getLanguages(true) as $lang) {

@@ -26,6 +26,11 @@ if (!defined('_PS_VERSION_')) {
 class AdminMlCategoryAiAjaxController extends ModuleAdminController
 {
     /**
+     * @var Mlcategoryaidescription
+     */
+    public $module;
+
+    /**
      * Constructor
      */
     public function __construct()
@@ -544,7 +549,7 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
             return;
         }
 
-        $placeholder = new MlCategoryAiPlaceholder($category, $idLang);
+        $placeholder = new MlCategoryAiPlaceholder((int) $category->id, $idLang);
         $resolvedPrompt = $placeholder->resolve($promptTemplate);
 
         $this->jsonResponse([

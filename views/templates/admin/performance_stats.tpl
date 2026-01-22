@@ -49,7 +49,7 @@
 		<div class="col-lg-2 col-md-4 col-sm-6">
 			<div class="panel panel-stats" style="background: #f5f5f5; text-align: center; padding: 15px;">
 				<div style="font-size: 24px; font-weight: bold; color: #f39c12;">
-					{($run_stats_aggregate.total_tokens_in + $run_stats_aggregate.total_tokens_out)|number_format:0:'.':','}
+					{($run_stats_aggregate.total_tokens_in + $run_stats_aggregate.total_tokens_out)|intval|number_format:0:'.':','}
 				</div>
 				<div style="font-size: 12px; color: #666;">
 					{l s='Total Tokens' mod='mlcategoryaidescription'}
@@ -60,9 +60,9 @@
 			<div class="panel panel-stats" style="background: #f5f5f5; text-align: center; padding: 15px;">
 				<div style="font-size: 24px; font-weight: bold; color: #9b59b6;">
 					{if $run_stats_aggregate.avg_execution_time_ms > 60000}
-						{($run_stats_aggregate.avg_execution_time_ms / 60000)|number_format:1}m
+						{($run_stats_aggregate.avg_execution_time_ms / 60000)|floatval|number_format:1}m
 					{elseif $run_stats_aggregate.avg_execution_time_ms > 1000}
-						{($run_stats_aggregate.avg_execution_time_ms / 1000)|number_format:1}s
+						{($run_stats_aggregate.avg_execution_time_ms / 1000)|floatval|number_format:1}s
 					{else}
 						{$run_stats_aggregate.avg_execution_time_ms|intval}ms
 					{/if}
@@ -76,7 +76,7 @@
 			<div class="panel panel-stats" style="background: #f5f5f5; text-align: center; padding: 15px;">
 				<div style="font-size: 24px; font-weight: bold; color: #e74c3c;">
 					{if $run_stats_aggregate.avg_request_time_ms > 1000}
-						{($run_stats_aggregate.avg_request_time_ms / 1000)|number_format:2}s
+						{($run_stats_aggregate.avg_request_time_ms / 1000)|floatval|number_format:2}s
 					{else}
 						{$run_stats_aggregate.avg_request_time_ms|intval}ms
 					{/if}
@@ -137,13 +137,13 @@
 						{/if}
 					</td>
 					<td class="text-right" style="font-family: monospace; font-size: 11px;">
-						{$run.tokens_input|number_format:0:'.':','|escape:'htmlall':'UTF-8'} / {$run.tokens_output|number_format:0:'.':','|escape:'htmlall':'UTF-8'}
+						{$run.tokens_input|intval|number_format:0:'.':','} / {$run.tokens_output|intval|number_format:0:'.':','}
 					</td>
 					<td class="text-right">
 						{if $run.execution_time_ms > 60000}
-							{($run.execution_time_ms / 60000)|number_format:1}m
+							{($run.execution_time_ms / 60000)|floatval|string_format:"%.1f"}m
 						{elseif $run.execution_time_ms > 1000}
-							{($run.execution_time_ms / 1000)|number_format:1}s
+							{($run.execution_time_ms / 1000)|floatval|string_format:"%.1f"}s
 						{else}
 							{$run.execution_time_ms|intval}ms
 						{/if}

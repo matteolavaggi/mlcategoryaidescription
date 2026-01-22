@@ -21,18 +21,26 @@ alwaysApply: true
 
 When executing PrestaShop module commands:
 
-1. **Detect shell type** from terminal context (PowerShell, Git Bash, or native Bash)
-2. **Use absolute paths** with proper escaping for the detected shell
-3. **Run as Administrator** when creating symlinks on Windows
-4. **Always clear cache** after install/upgrade operations
+1. **Use WSL for shell scripts** (`.sh` files) - run via `wsl -e bash -c 'command'`
+2. **Use PowerShell for PHP commands** (module install/upgrade/cache)
+3. **Use absolute paths** with proper escaping for the detected shell
+4. **Run as Administrator** when creating symlinks on Windows
+5. **Always clear cache** after install/upgrade operations
 
-### Shell Detection Rules
+### Shell Usage Rules
 
-| Terminal | Path Style | Example |
-|----------|------------|---------|
-| PowerShell | Windows backslash | `D:\FTP\local\ps8.local` |
-| Git Bash | Unix forward slash with /c or /d | `/c/Users/Pineapple/...` or `/d/FTP/...` |
-| WSL/Bash | Unix forward slash with /mnt | `/mnt/d/FTP/local/ps8.local` |
+| Task | Shell | Command Format |
+|------|-------|----------------|
+| Shell scripts (.sh) | **WSL** | `wsl -e bash -c 'cd "/mnt/c/..." && ./script.sh'` |
+| PHP commands | PowerShell | `cd D:\FTP\local\ps8.local; php bin/console ...` |
+| Git commands | Either | Works in both |
+
+### Path Conversion (Windows → WSL)
+
+| Windows Path | WSL Path |
+|--------------|----------|
+| `C:\Users\...` | `/mnt/c/Users/...` |
+| `D:\FTP\...` | `/mnt/d/FTP/...` |
 
 ---
 

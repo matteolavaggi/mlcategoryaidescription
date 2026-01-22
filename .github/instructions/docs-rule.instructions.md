@@ -2,7 +2,7 @@
 description: Guidelines for writing markdown documentation files in projects
 globs:
   - "**/*.md"
-alwaysApply: false
+alwaysApply: true
 ---
 CHANGELOG.md
 # Changelog

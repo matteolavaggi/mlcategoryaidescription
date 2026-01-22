@@ -80,7 +80,7 @@ class MlCategoryAiRunStats
 
         $result = Db::getInstance()->insert('mlcategoryai_run_stats', [
             'id_job' => (int) $idJob,
-            'id_shop' => (int) Context::getContext()->shop->id,
+            'id_shop' => (int) Shop::getContextShopID(),
             'started_at' => date('Y-m-d H:i:s'),
             'categories_count' => (int) $categoriesCount,
             'languages_count' => (int) $languagesCount,
@@ -161,7 +161,7 @@ class MlCategoryAiRunStats
         return Db::getInstance()->executeS('
             SELECT *
             FROM `' . _DB_PREFIX_ . 'mlcategoryai_run_stats`
-            WHERE `id_shop` = ' . (int) Context::getContext()->shop->id . '
+            WHERE `id_shop` = ' . (int) Shop::getContextShopID() . '
             ORDER BY `started_at` DESC
             LIMIT ' . (int) $limit
         );
@@ -183,7 +183,7 @@ class MlCategoryAiRunStats
                 AVG(execution_time_ms) as avg_execution_time_ms,
                 AVG(avg_request_time_ms) as avg_request_time_ms
             FROM `' . _DB_PREFIX_ . 'mlcategoryai_run_stats`
-            WHERE `id_shop` = ' . (int) Context::getContext()->shop->id . '
+            WHERE `id_shop` = ' . (int) Shop::getContextShopID() . '
                 AND `completed_at` IS NOT NULL
         ');
 

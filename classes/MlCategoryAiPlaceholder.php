@@ -233,7 +233,8 @@ class MlCategoryAiPlaceholder
      */
     protected function getCategoryMetaKeywords()
     {
-        return $this->category->meta_keywords ?: '';
+        // meta_keywords may not exist in all PS versions
+        return isset($this->category->meta_keywords) ? ($this->category->meta_keywords ?: '') : '';
     }
 
     /**

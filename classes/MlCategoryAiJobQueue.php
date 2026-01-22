@@ -273,7 +273,7 @@ class MlCategoryAiJobQueue
         }
 
         // Check if parallel processing is enabled (default: yes)
-        $useParallel = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, true);
+        $useParallel = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, null, null, null, true);
 
         $t3 = microtime(true);
         MlCategoryAiLogger::info('processBatch START - items=' . count($batchItems) . ' parallel=' . ($useParallel ? 'YES' : 'NO'));
@@ -342,7 +342,7 @@ class MlCategoryAiJobQueue
      */
     protected function logCompletedJobStats($job, $lastBatchResult)
     {
-        $parallelEnabled = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, true);
+        $parallelEnabled = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, null, null, null, true);
 
         // Calculate execution time from job timestamps
         $startedAt = strtotime($job['started_at']);
@@ -352,7 +352,7 @@ class MlCategoryAiJobQueue
         // Insert directly to have accurate timing
         Db::getInstance()->insert('mlcategoryai_run_stats', [
             'id_job' => (int) $job['id_job'],
-            'id_shop' => (int) Context::getContext()->shop->id,
+            'id_shop' => (int) Shop::getContextShopID(),
             'started_at' => pSQL($job['started_at']),
             'completed_at' => date('Y-m-d H:i:s'),
             'execution_time_ms' => (int) $executionTimeMs,
@@ -441,7 +441,7 @@ class MlCategoryAiJobQueue
         // Build UPDATE query manually to handle NULL values
         $set = [];
         foreach ($updateData as $key => $value) {
-            if (is_array($value) && isset($value['type']) && $value['type'] === 'sql') {
+            if (is_array($value) && array_key_exists('type', $value) && $value['type'] === 'sql') {
                 $set[] = '`' . bqSQL($key) . '` = ' . $value['value'];
             } else {
                 $set[] = '`' . bqSQL($key) . '` = "' . pSQL($value) . '"';

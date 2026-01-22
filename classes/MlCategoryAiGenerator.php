@@ -192,7 +192,8 @@ class MlCategoryAiGenerator
                 return $category->meta_description ?: '';
 
             case Mlcategoryaidescription::FIELD_META_KEYWORDS:
-                return $category->meta_keywords ?: '';
+                // meta_keywords may not exist in all PS versions
+                return isset($category->meta_keywords) ? ($category->meta_keywords ?: '') : '';
 
             case Mlcategoryaidescription::FIELD_LINK_REWRITE:
                 return $category->link_rewrite ?: '';
@@ -424,7 +425,7 @@ class MlCategoryAiGenerator
 
         // For link_rewrite, ensure URL-safe format
         if ($fieldType === Mlcategoryaidescription::FIELD_LINK_REWRITE) {
-            $content = Tools::link_rewrite($content);
+            $content = Tools::str2url($content);
         }
 
         // Update via direct SQL for specific language

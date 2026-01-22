@@ -55,7 +55,7 @@ function upgrade_module_1_4_1($module)
     $menuTab->module = $module->name;
     $menuTab->id_parent = $catalogTabId;
     $menuTab->position = 99;
-    $menuTab->active = 1;
+    $menuTab->active = true;
     $menuTab->icon = 'category';
 
     foreach (Language::getLanguages(true) as $lang) {

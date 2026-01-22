@@ -1,6 +1,6 @@
 <?php
 /**
- * 2010-2025 2win.agency
+ * 2010-2026 2win.agency
  *
  * NOTICE OF LICENSE
  *
@@ -15,16 +15,10 @@
  * needs please contact us for extra customization service at an affordable price
  *
  * @author    2win.agency
- * @copyright 2010-2025 2win.agency
+ * @copyright 2010-2026 2win.agency
  * @license   Valid for 1 website (or project) for each purchase of license
  *            International Registered Trademark & Property of 2win.agency
  */
-header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
-header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
-
-header('Cache-Control: no-store, no-cache, must-revalidate');
-header('Cache-Control: post-check=0, pre-check=0', false);
-header('Pragma: no-cache');
-
-header('Location: ../');
-exit;
+if (!defined('_PS_VERSION_')) {
+    exit;
+}
