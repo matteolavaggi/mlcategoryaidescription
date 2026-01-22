@@ -88,7 +88,7 @@ class Mlcategoryaidescription extends Module
     {
         $this->name = 'mlcategoryaidescription';
         $this->tab = 'administration';
-        $this->version = '1.4.0';
+        $this->version = '1.4.1';
         $this->author = '2win.agency';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -159,17 +159,39 @@ class Mlcategoryaidescription extends Module
      */
     protected function installAdminTab()
     {
-        $tab = new Tab();
-        $tab->class_name = 'AdminMlCategoryAiAjax';
-        $tab->module = $this->name;
-        $tab->id_parent = -1; // Hidden tab
-        $tab->active = 1;
+        // Install hidden AJAX tab
+        $ajaxTab = new Tab();
+        $ajaxTab->class_name = 'AdminMlCategoryAiAjax';
+        $ajaxTab->module = $this->name;
+        $ajaxTab->id_parent = -1; // Hidden tab
+        $ajaxTab->active = 1;
 
         foreach (Language::getLanguages(true) as $lang) {
-            $tab->name[$lang['id_lang']] = 'ML Category AI AJAX';
+            $ajaxTab->name[$lang['id_lang']] = 'ML Category AI AJAX';
         }
 
-        return $tab->add();
+        $ajaxTab->add();
+
+        // Install visible menu tab under Catalog
+        $catalogTabId = (int) Tab::getIdFromClassName('AdminCatalog');
+        if (!$catalogTabId) {
+            // Fallback: try to find SELL parent tab (PS 1.7.7+)
+            $catalogTabId = (int) Tab::getIdFromClassName('SELL');
+        }
+
+        $menuTab = new Tab();
+        $menuTab->class_name = 'AdminMlCategoryAi';
+        $menuTab->module = $this->name;
+        $menuTab->id_parent = $catalogTabId;
+        $menuTab->position = 99; // At the bottom of Catalog menu
+        $menuTab->active = 1;
+        $menuTab->icon = 'category'; // Material icon
+
+        foreach (Language::getLanguages(true) as $lang) {
+            $menuTab->name[$lang['id_lang']] = 'ML Category AI';
+        }
+
+        return $menuTab->add();
     }
 
     /**
@@ -220,11 +242,18 @@ class Mlcategoryaidescription extends Module
      */
     protected function uninstallAdminTab()
     {
-        $idTab = (int) Tab::getIdFromClassName('AdminMlCategoryAiAjax');
-        if ($idTab) {
-            $tab = new Tab($idTab);
+        // Remove AJAX hidden tab
+        $idAjaxTab = (int) Tab::getIdFromClassName('AdminMlCategoryAiAjax');
+        if ($idAjaxTab) {
+            $tab = new Tab($idAjaxTab);
+            $tab->delete();
+        }
 
-            return $tab->delete();
+        // Remove visible menu tab
+        $idMenuTab = (int) Tab::getIdFromClassName('AdminMlCategoryAi');
+        if ($idMenuTab) {
+            $tab = new Tab($idMenuTab);
+            $tab->delete();
         }
 
         return true;
