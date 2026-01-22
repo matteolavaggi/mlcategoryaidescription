@@ -112,6 +112,14 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
                     $this->handleClearDebugLog();
                     break;
 
+                case 'deleteJob':
+                    $this->handleDeleteJob();
+                    break;
+
+                case 'getJobStatus':
+                    $this->handleGetJobStatus();
+                    break;
+
                 default:
                     $this->jsonResponse(['success' => false, 'error' => 'Unknown action: ' . $action]);
             }
@@ -170,6 +178,52 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
         $bytes /= pow(1024, $pow);
 
         return round($bytes, 2) . ' ' . $units[$pow];
+    }
+
+    /**
+     * Delete a job from the queue
+     */
+    protected function handleDeleteJob()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiJobQueue.php';
+
+        $idJob = (int) Tools::getValue('job_id');
+
+        if (!$idJob) {
+            $this->jsonResponse(['success' => false, 'error' => 'Job ID required']);
+
+            return;
+        }
+
+        $jobQueue = new MlCategoryAiJobQueue();
+        $result = $jobQueue->deleteJob($idJob);
+
+        $this->jsonResponse([
+            'success' => $result,
+            'message' => $result ? 'Job deleted' : 'Failed to delete job',
+        ]);
+    }
+
+    /**
+     * Get status of all active jobs
+     */
+    protected function handleGetJobStatus()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiJobQueue.php';
+
+        $jobQueue = new MlCategoryAiJobQueue();
+        $jobs = $jobQueue->getAllActiveJobs();
+
+        // Mark stuck jobs (no update for 5+ minutes)
+        foreach ($jobs as &$job) {
+            $lastUpdate = strtotime($job['updated_at']);
+            $job['is_stuck'] = ($job['status'] === 'running' && (time() - $lastUpdate) > 300);
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'jobs' => $jobs,
+        ]);
     }
 
     /**

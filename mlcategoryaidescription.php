@@ -88,7 +88,7 @@ class Mlcategoryaidescription extends Module
     {
         $this->name = 'mlcategoryaidescription';
         $this->tab = 'administration';
-        $this->version = '1.4.1';
+        $this->version = '1.4.2';
         $this->author = '2win.agency';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -754,17 +754,22 @@ Requisiti:
         // Assign additional variables for configuration page
         $this->context->smarty->assign([
             'cron_url' => $this->getCronUrl(),
+            'cron_enabled' => (bool) Configuration::get(self::CONFIG_CRON_ENABLED),
             'ajax_url' => $this->getAjaxUrl(),
             'ajax_token' => $this->getAjaxToken(),
             'languages' => Language::getLanguages(true),
             'categories' => $this->getCategoriesForSelect(),
             'current_job' => $this->getCurrentRunningJob(),
+            'pending_jobs' => $this->getAllPendingJobs(),
             'run_stats' => MlCategoryAiRunStats::getRecentRuns(10),
             'run_stats_aggregate' => MlCategoryAiRunStats::getAggregateStats(),
         ]);
 
         // Add header info panel FIRST
         $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/header_info.tpl');
+
+        // Add job status dashboard (shows pending jobs and cron setup)
+        $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/job_status.tpl');
 
         // Add module-specific templates
         $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/configure.tpl');
@@ -874,6 +879,31 @@ Requisiti:
         );
 
         return $result ?: null;
+    }
+
+    /**
+     * Get all pending/running/paused jobs
+     *
+     * @return array
+     */
+    protected function getAllPendingJobs()
+    {
+        $results = Db::getInstance()->executeS(
+            'SELECT * FROM `' . _DB_PREFIX_ . 'mlcategoryai_job_queue`
+            WHERE `status` IN ("pending", "running", "paused")
+            AND `id_shop` = ' . (int) $this->context->shop->id . '
+            ORDER BY `created_at` DESC'
+        );
+
+        if ($results) {
+            foreach ($results as &$job) {
+                // Check if job is stuck (running but no updates for 5+ minutes)
+                $lastUpdate = strtotime($job['updated_at']);
+                $job['is_stuck'] = ($job['status'] === 'running' && (time() - $lastUpdate) > 300);
+            }
+        }
+
+        return $results ?: [];
     }
 
     /**

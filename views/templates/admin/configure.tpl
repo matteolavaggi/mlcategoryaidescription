@@ -130,12 +130,27 @@
 						<option value="overwrite">{l s='Overwrite - Replace all content' mod='mlcategoryaidescription'}</option>
 					</select>
 				</div>
+
+				<div class="form-group">
+					<label class="control-label">{l s='Processing Mode' mod='mlcategoryaidescription'}</label>
+					<select id="processing-mode-select" class="form-control">
+						<option value="browser">{l s='Browser - Process now (keep this tab open)' mod='mlcategoryaidescription'}</option>
+						<option value="background">{l s='Background - Create job for cron processing' mod='mlcategoryaidescription'}</option>
+					</select>
+					<p class="help-block" id="processing-mode-help">
+						<span id="help-browser">{l s='Processing will happen in this browser tab. Do not close until complete.' mod='mlcategoryaidescription'}</span>
+						<span id="help-background" style="display:none;">{l s='Job will be queued. Configure cron to process automatically in background.' mod='mlcategoryaidescription'}</span>
+					</p>
+				</div>
 			</div>
 		</div>
 
 		<div class="panel-footer">
 			<button type="button" class="btn btn-primary" id="btn-start-generation">
 				<i class="icon icon-rocket"></i> {l s='Start Generation' mod='mlcategoryaidescription'}
+			</button>
+			<button type="button" class="btn btn-info" id="btn-start-background" style="display:none;">
+				<i class="icon icon-clock-o"></i> {l s='Queue for Background' mod='mlcategoryaidescription'}
 			</button>
 			<button type="button" class="btn btn-default" id="btn-test-api">
 				<i class="icon icon-plug"></i> {l s='Test API Connection' mod='mlcategoryaidescription'}

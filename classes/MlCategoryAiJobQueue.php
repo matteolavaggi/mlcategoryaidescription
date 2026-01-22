@@ -147,6 +147,46 @@ class MlCategoryAiJobQueue
     }
 
     /**
+     * Get all active jobs (pending, running, paused)
+     *
+     * @return array
+     */
+    public function getAllActiveJobs()
+    {
+        $sql = 'SELECT * FROM `' . _DB_PREFIX_ . 'mlcategoryai_job_queue`
+                WHERE `status` IN ("' . self::STATUS_PENDING . '", "' . self::STATUS_RUNNING . '", "' . self::STATUS_PAUSED . '")
+                AND `id_shop` = ' . (int) $this->idShop . '
+                ORDER BY `created_at` DESC';
+
+        $results = Db::getInstance()->executeS($sql);
+
+        if ($results) {
+            foreach ($results as &$result) {
+                $result['category_ids'] = json_decode($result['category_ids'], true);
+                $result['language_ids'] = json_decode($result['language_ids'], true);
+                $result['fields_to_generate'] = json_decode($result['fields_to_generate'], true);
+            }
+        }
+
+        return $results ?: [];
+    }
+
+    /**
+     * Delete a job
+     *
+     * @param int $idJob
+     *
+     * @return bool
+     */
+    public function deleteJob($idJob)
+    {
+        return Db::getInstance()->delete(
+            'mlcategoryai_job_queue',
+            'id_job = ' . (int) $idJob . ' AND id_shop = ' . (int) $this->idShop
+        );
+    }
+
+    /**
      * Process next batch of items using parallel API calls
      *
      * @param int $idJob

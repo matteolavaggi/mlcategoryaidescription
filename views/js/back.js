@@ -44,7 +44,33 @@
 
             // Start generation button
             document.getElementById('btn-start-generation')?.addEventListener('click', function () {
-                self.startGeneration();
+                self.startGeneration('browser');
+            });
+
+            // Start background button
+            document.getElementById('btn-start-background')?.addEventListener('click', function () {
+                self.startGeneration('background');
+            });
+
+            // Processing mode toggle
+            document.getElementById('processing-mode-select')?.addEventListener('change', function () {
+                var mode = this.value;
+                var browserBtn = document.getElementById('btn-start-generation');
+                var backgroundBtn = document.getElementById('btn-start-background');
+                var helpBrowser = document.getElementById('help-browser');
+                var helpBackground = document.getElementById('help-background');
+
+                if (mode === 'background') {
+                    browserBtn.style.display = 'none';
+                    backgroundBtn.style.display = 'inline-block';
+                    helpBrowser.style.display = 'none';
+                    helpBackground.style.display = 'inline';
+                } else {
+                    browserBtn.style.display = 'inline-block';
+                    backgroundBtn.style.display = 'none';
+                    helpBrowser.style.display = 'inline';
+                    helpBackground.style.display = 'none';
+                }
             });
 
             // Test API button
@@ -112,8 +138,9 @@
             }
         },
 
-        startGeneration: function () {
+        startGeneration: function (mode) {
             var self = this;
+            mode = mode || 'browser';
 
             // Collect selected categories
             var categorySelect = document.getElementById('category-select');
@@ -159,10 +186,18 @@
             }, function (response) {
                 if (response.success) {
                     self.currentJobId = response.job_id;
-                    self.showProgress();
-                    self.log('Job created with ID: ' + response.job_id);
-                    self.log('Starting generation...');
-                    self.processNextBatch();
+
+                    if (mode === 'background') {
+                        // Background mode: just show confirmation and reload
+                        alert('Job #' + response.job_id + ' created!\n\nThe job is now queued for background processing.\nConfigure cron to process automatically, or resume from the Job Queue panel.');
+                        location.reload();
+                    } else {
+                        // Browser mode: start processing immediately
+                        self.showProgress();
+                        self.log('Job created with ID: ' + response.job_id);
+                        self.log('Starting generation...');
+                        self.processNextBatch();
+                    }
                 } else {
                     alert('Error: ' + response.error);
                 }
