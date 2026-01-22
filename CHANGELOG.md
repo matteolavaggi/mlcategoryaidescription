@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- New placeholder `{category_breadcrumb}` - full category path (e.g., "Clothing > Socks > Wool > Merino")
+- New placeholder `{category_url}` - full URL to category page
+- New placeholder `{shop_url}` - shop base URL
+- Updated all default prompts (8 languages) to use breadcrumb for better AI context
+
+### Fixed
+- `{site_description}` now correctly reads from ps_meta_lang (index page) instead of non-existent PS_META_DESCRIPTION
+
 ## [1.4.2] - 2026-01-22
 
 ### Added

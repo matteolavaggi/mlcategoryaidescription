@@ -176,6 +176,18 @@ class MlCategoryAiPlaceholder
                 $value = $this->getLanguageName();
                 break;
 
+            case 'category_breadcrumb':
+                $value = $this->getCategoryBreadcrumb();
+                break;
+
+            case 'category_url':
+                $value = $this->getCategoryUrl();
+                break;
+
+            case 'shop_url':
+                $value = $this->getShopUrl();
+                break;
+
             default:
                 $value = '{' . $placeholder . '}'; // Return unchanged if unknown
                 break;
@@ -264,6 +276,74 @@ class MlCategoryAiPlaceholder
     }
 
     /**
+     * Get full category breadcrumb path
+     * Example: "Clothing > Socks > Wool > Merino"
+     *
+     * @return string
+     */
+    protected function getCategoryBreadcrumb()
+    {
+        $breadcrumb = [];
+        $category = $this->category;
+
+        // Add current category
+        if ($category->name) {
+            $breadcrumb[] = $category->name;
+        }
+
+        // Walk up the parent chain (skip root categories 1 and 2)
+        $parentId = (int) $category->id_parent;
+        $maxDepth = 10; // Prevent infinite loops
+        $depth = 0;
+
+        while ($parentId > 2 && $depth < $maxDepth) {
+            $parent = new Category($parentId, $this->idLang);
+            if (Validate::isLoadedObject($parent) && $parent->name) {
+                array_unshift($breadcrumb, $parent->name);
+                $parentId = (int) $parent->id_parent;
+            } else {
+                break;
+            }
+            $depth++;
+        }
+
+        return implode(' > ', $breadcrumb);
+    }
+
+    /**
+     * Get full category URL
+     *
+     * @return string
+     */
+    protected function getCategoryUrl()
+    {
+        $link = Context::getContext()->link;
+        if ($link && Validate::isLoadedObject($this->category)) {
+            return $link->getCategoryLink($this->category, null, $this->idLang);
+        }
+
+        return '';
+    }
+
+    /**
+     * Get shop base URL
+     *
+     * @return string
+     */
+    protected function getShopUrl()
+    {
+        $shop = new Shop($this->idShop);
+        if (Validate::isLoadedObject($shop)) {
+            $ssl = Configuration::get('PS_SSL_ENABLED');
+            $protocol = $ssl ? 'https://' : 'http://';
+
+            return $protocol . $shop->domain . $shop->getBaseURI();
+        }
+
+        return Configuration::get('PS_SHOP_DOMAIN') ?: '';
+    }
+
+    /**
      * Get site/shop name
      *
      * @return string
@@ -274,13 +354,24 @@ class MlCategoryAiPlaceholder
     }
 
     /**
-     * Get site description
+     * Get site description from homepage meta
      *
      * @return string
      */
     protected function getSiteDescription()
     {
-        return Configuration::get('PS_META_DESCRIPTION', $this->idLang) ?: '';
+        // Get description from index (homepage) page meta
+        $sql = 'SELECT ml.description
+                FROM `' . _DB_PREFIX_ . 'meta` m
+                LEFT JOIN `' . _DB_PREFIX_ . 'meta_lang` ml 
+                    ON m.id_meta = ml.id_meta 
+                    AND ml.id_lang = ' . (int) $this->idLang . '
+                    AND ml.id_shop = ' . (int) $this->idShop . '
+                WHERE m.page = "index"';
+
+        $description = Db::getInstance()->getValue($sql);
+
+        return $description ?: '';
     }
 
     /**
@@ -450,6 +541,16 @@ class MlCategoryAiPlaceholder
                 'description' => 'Parent category name',
                 'example' => 'Footwear',
             ],
+            [
+                'placeholder' => '{category_breadcrumb}',
+                'description' => 'Full category path (all parents)',
+                'example' => 'Clothing > Socks > Wool > Merino',
+            ],
+            [
+                'placeholder' => '{category_url}',
+                'description' => 'Full URL to category page',
+                'example' => 'https://myshop.com/en/3-category-name',
+            ],
             // Site placeholders
             [
                 'placeholder' => '{site_name}',
@@ -460,6 +561,11 @@ class MlCategoryAiPlaceholder
                 'placeholder' => '{site_description}',
                 'description' => 'Shop meta description',
                 'example' => 'Your online store...',
+            ],
+            [
+                'placeholder' => '{shop_url}',
+                'description' => 'Shop base URL',
+                'example' => 'https://myshop.com/',
             ],
             // Product placeholders
             [

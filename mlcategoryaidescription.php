@@ -292,9 +292,10 @@ class Mlcategoryaidescription extends Module
                 'template_en' => 'Write a compelling and SEO-friendly category description for an e-commerce website.
 
 CONTEXT INFORMATION:
+- Category path: {category_breadcrumb}
 - Category name: {category_name}
-- Parent category: {parent_category_name}
-- Website: {site_name}
+- Category URL: {category_url}
+- Website: {site_name} ({shop_url})
 - Website description: {site_description}
 - Sample products in this category (for context only): {first_products:10}
 
@@ -323,9 +324,10 @@ REQUIREMENTS:
                 'template_fr' => 'Rédigez une description de catégorie captivante et optimisée SEO pour un site e-commerce.
 
 INFORMATIONS CONTEXTUELLES :
+- Chemin de la catégorie : {category_breadcrumb}
 - Nom de la catégorie : {category_name}
-- Catégorie parente : {parent_category_name}
-- Site web : {site_name}
+- URL de la catégorie : {category_url}
+- Site web : {site_name} ({shop_url})
 - Description du site : {site_description}
 - Exemples de produits dans cette catégorie (contexte uniquement) : {first_products:10}
 
@@ -352,9 +354,10 @@ EXIGENCES :
                 'template_it' => 'Scrivi una descrizione di categoria accattivante e ottimizzata SEO per un sito e-commerce.
 
 INFORMAZIONI DI CONTESTO:
+- Percorso categoria: {category_breadcrumb}
 - Nome categoria: {category_name}
-- Categoria padre: {parent_category_name}
-- Sito web: {site_name}
+- URL categoria: {category_url}
+- Sito web: {site_name} ({shop_url})
 - Descrizione del sito: {site_description}
 - Prodotti di esempio in questa categoria (solo per contesto): {first_products:10}
 
@@ -381,9 +384,10 @@ REQUISITI:
                 'template_de' => 'Schreiben Sie eine ansprechende und SEO-optimierte Kategoriebeschreibung für eine E-Commerce-Website.
 
 KONTEXTINFORMATIONEN:
+- Kategoriepfad: {category_breadcrumb}
 - Kategoriename: {category_name}
-- Übergeordnete Kategorie: {parent_category_name}
-- Website: {site_name}
+- Kategorie-URL: {category_url}
+- Website: {site_name} ({shop_url})
 - Website-Beschreibung: {site_description}
 - Beispielprodukte in dieser Kategorie (nur als Kontext): {first_products:10}
 
@@ -409,9 +413,10 @@ ANFORDERUNGEN:
                 'template_es' => 'Escribe una descripción de categoría atractiva y optimizada para SEO para un sitio e-commerce.
 
 INFORMACIÓN DE CONTEXTO:
+- Ruta de categoría: {category_breadcrumb}
 - Nombre de categoría: {category_name}
-- Categoría padre: {parent_category_name}
-- Sitio web: {site_name}
+- URL de categoría: {category_url}
+- Sitio web: {site_name} ({shop_url})
 - Descripción del sitio: {site_description}
 - Productos de ejemplo en esta categoría (solo contexto): {first_products:10}
 
@@ -437,9 +442,10 @@ REQUISITOS:
                 'template_pt' => 'Escreva uma descrição de categoria atraente e otimizada para SEO para um site e-commerce.
 
 INFORMAÇÕES DE CONTEXTO:
+- Caminho da categoria: {category_breadcrumb}
 - Nome da categoria: {category_name}
-- Categoria pai: {parent_category_name}
-- Site: {site_name}
+- URL da categoria: {category_url}
+- Site: {site_name} ({shop_url})
 - Descrição do site: {site_description}
 - Produtos de exemplo nesta categoria (apenas contexto): {first_products:10}
 
@@ -465,9 +471,10 @@ REQUISITOS:
                 'template_nl' => 'Schrijf een aantrekkelijke en SEO-geoptimaliseerde categoriebeschrijving voor een e-commerce website.
 
 CONTEXTINFORMATIE:
+- Categoriepad: {category_breadcrumb}
 - Categorienaam: {category_name}
-- Bovenliggende categorie: {parent_category_name}
-- Website: {site_name}
+- Categorie-URL: {category_url}
+- Website: {site_name} ({shop_url})
 - Website beschrijving: {site_description}
 - Voorbeeldproducten in deze categorie (alleen context): {first_products:10}
 
@@ -493,9 +500,10 @@ VEREISTEN:
                 'template_pl' => 'Napisz atrakcyjny i zoptymalizowany pod kątem SEO opis kategorii dla sklepu internetowego.
 
 INFORMACJE KONTEKSTOWE:
+- Ścieżka kategorii: {category_breadcrumb}
 - Nazwa kategorii: {category_name}
-- Kategoria nadrzędna: {parent_category_name}
-- Strona: {site_name}
+- URL kategorii: {category_url}
+- Strona: {site_name} ({shop_url})
 - Opis strony: {site_description}
 - Przykładowe produkty w tej kategorii (tylko kontekst): {first_products:10}
 
@@ -523,6 +531,7 @@ WYMAGANIA:
                 'name' => 'Default Meta Title Prompt',
                 'template_en' => 'Generate an SEO-optimized meta title for this e-commerce category page.
 
+Category path: {category_breadcrumb}
 Category: {category_name}
 Website: {site_name}
 
@@ -533,6 +542,7 @@ Requirements:
 - Return ONLY the meta title text, no explanations',
                 'template_fr' => 'Générez un meta title optimisé pour le SEO pour cette page de catégorie e-commerce.
 
+Chemin de la catégorie : {category_breadcrumb}
 Catégorie : {category_name}
 Site web : {site_name}
 
@@ -543,6 +553,7 @@ Exigences :
 - Retourner UNIQUEMENT le texte du meta title, sans explications',
                 'template_it' => 'Genera un meta title ottimizzato per la SEO per questa pagina di categoria e-commerce.
 
+Percorso categoria: {category_breadcrumb}
 Categoria: {category_name}
 Sito web: {site_name}
 
@@ -553,6 +564,7 @@ Requisiti:
 - Restituire SOLO il testo del meta title, senza spiegazioni',
                 'template_de' => 'Generieren Sie einen SEO-optimierten Meta-Titel für diese E-Commerce-Kategorieseite.
 
+Kategoriepfad: {category_breadcrumb}
 Kategorie: {category_name}
 Website: {site_name}
 
@@ -563,6 +575,7 @@ Anforderungen:
 - NUR den Meta-Titel-Text zurückgeben, keine Erklärungen',
                 'template_es' => 'Genera un meta title optimizado para SEO para esta página de categoría de e-commerce.
 
+Ruta de categoría: {category_breadcrumb}
 Categoría: {category_name}
 Sitio web: {site_name}
 
@@ -576,6 +589,7 @@ Requisitos:
                 'name' => 'Default Meta Description Prompt',
                 'template_en' => 'Write an SEO-friendly meta description for this e-commerce category page.
 
+Category path: {category_breadcrumb}
 Category: {category_name}
 Products available: {product_count}
 Sample products: {random_products:5}
@@ -587,6 +601,7 @@ Requirements:
 - Return ONLY the meta description text, no explanations',
                 'template_fr' => 'Rédigez une meta description optimisée SEO pour cette page de catégorie e-commerce.
 
+Chemin de la catégorie : {category_breadcrumb}
 Catégorie : {category_name}
 Produits disponibles : {product_count}
 Exemples de produits : {random_products:5}
@@ -598,6 +613,7 @@ Exigences :
 - Retourner UNIQUEMENT le texte de la meta description, sans explications',
                 'template_it' => 'Scrivi una meta description SEO-friendly per questa pagina di categoria e-commerce.
 
+Percorso categoria: {category_breadcrumb}
 Categoria: {category_name}
 Prodotti disponibili: {product_count}
 Esempi di prodotti: {random_products:5}
@@ -612,8 +628,8 @@ Requisiti:
                 'name' => 'Default Meta Keywords Prompt',
                 'template_en' => 'Generate SEO keywords for this e-commerce category page.
 
+Category path: {category_breadcrumb}
 Category: {category_name}
-Parent Category: {parent_category_name}
 Sample products: {first_products:5}
 
 Requirements:
@@ -623,8 +639,8 @@ Requirements:
 - Return ONLY the keywords, comma-separated, no explanations',
                 'template_fr' => 'Générez des mots-clés SEO pour cette page de catégorie e-commerce.
 
+Chemin de la catégorie : {category_breadcrumb}
 Catégorie : {category_name}
-Catégorie parente : {parent_category_name}
 Exemples de produits : {first_products:5}
 
 Exigences :
@@ -634,8 +650,8 @@ Exigences :
 - Retourner UNIQUEMENT les mots-clés, séparés par des virgules, sans explications',
                 'template_it' => 'Genera parole chiave SEO per questa pagina di categoria e-commerce.
 
+Percorso categoria: {category_breadcrumb}
 Categoria: {category_name}
-Categoria principale: {parent_category_name}
 Esempi di prodotti: {first_products:5}
 
 Requisiti:

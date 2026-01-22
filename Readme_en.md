@@ -214,17 +214,24 @@ Edit prompt templates for each field type and language. Include context about yo
 
 Use these in your prompt templates:
 
-| Placeholder | Description |
-|-------------|-------------|
-| `{category_name}` | Category name |
-| `{category_description}` | Current description |
-| `{parent_name}` | Parent category name |
-| `{parent_description}` | Parent category description |
-| `{products_list}` | List of products in category |
-| `{products_count}` | Number of products |
-| `{subcategories_list}` | List of subcategories |
-| `{shop_name}` | Your shop name |
-| `{language}` | Target language name |
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
+| `{category_name}` | Category name | Men's Shoes |
+| `{category_breadcrumb}` | Full category path (all parents) | Clothing > Footwear > Men's Shoes |
+| `{category_description}` | Current category description | Browse our collection... |
+| `{category_url}` | Full URL to category page | https://myshop.com/en/mens-shoes |
+| `{parent_category_name}` | Direct parent category name | Footwear |
+| `{site_name}` | Your shop name | MyShop |
+| `{site_description}` | Shop meta description | Your online store... |
+| `{shop_url}` | Shop base URL | https://myshop.com/ |
+| `{product_list}` | Up to 50 product names | Product A, Product B... |
+| `{product_count}` | Number of products in category | 42 |
+| `{first_products:N}` | First N products from category | {first_products:10} |
+| `{random_products:N}` | N random products from category | {random_products:5} |
+| `{language_code}` | Target language ISO code | en, fr, de |
+| `{language_name}` | Target language full name | English, Français |
+
+💡 **Tip**: Use `{category_breadcrumb}` to give the AI full context about category hierarchy!
 
 ### ✅ Resume Support
 Long-running jobs can be paused and resumed. If your browser closes, start again and click "Resume" to continue from where you left off.
