@@ -129,11 +129,11 @@ class MlCategoryAiJobQueue
      */
     public function getActiveJob()
     {
+        // Note: getRow() automatically adds LIMIT 1, so don't add it manually
         $sql = 'SELECT * FROM `' . _DB_PREFIX_ . 'mlcategoryai_job_queue`
                 WHERE `status` IN ("' . self::STATUS_PENDING . '", "' . self::STATUS_RUNNING . '")
                 AND `id_shop` = ' . (int) $this->idShop . '
-                ORDER BY `created_at` ASC
-                LIMIT 1';
+                ORDER BY `created_at` ASC';
 
         $result = Db::getInstance()->getRow($sql);
 
