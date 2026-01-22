@@ -163,6 +163,68 @@ class MlCategoryAiClient
     }
 
     /**
+     * Configure SSL options for cURL handle
+     * Handles CA certificate bundle for different environments (Windows, Linux, etc.)
+     *
+     * @param resource $ch cURL handle
+     *
+     * @return void
+     */
+    protected function configureSslOptions($ch)
+    {
+        // Try to find CA bundle in common locations
+        $caBundlePaths = [
+            // PrestaShop bundled
+            _PS_ROOT_DIR_ . '/var/ca-bundle.crt',
+            _PS_MODULE_DIR_ . 'mlcategoryaidescription/ca-bundle.crt',
+            // Linux common paths
+            '/etc/ssl/certs/ca-certificates.crt',
+            '/etc/pki/tls/certs/ca-bundle.crt',
+            '/etc/ssl/ca-bundle.pem',
+            '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem',
+            // Windows WAMP/XAMPP
+            'C:/wamp64/bin/php/cacert.pem',
+            'C:/xampp/php/extras/ssl/cacert.pem',
+            'C:/laragon/etc/ssl/cacert.pem',
+        ];
+
+        $caBundle = null;
+        foreach ($caBundlePaths as $path) {
+            if (file_exists($path)) {
+                $caBundle = $path;
+                break;
+            }
+        }
+
+        if ($caBundle) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_CAINFO, $caBundle);
+            MlCategoryAiLogger::debug('Using CA bundle: ' . $caBundle);
+        } else {
+            // Fallback: use system default or disable verification as last resort
+            // Check if openssl.cafile is configured in php.ini
+            $phpCaFile = ini_get('openssl.cafile');
+            $curlCaInfo = ini_get('curl.cainfo');
+
+            if (!empty($phpCaFile) && file_exists($phpCaFile)) {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                curl_setopt($ch, CURLOPT_CAINFO, $phpCaFile);
+                MlCategoryAiLogger::debug('Using php.ini openssl.cafile: ' . $phpCaFile);
+            } elseif (!empty($curlCaInfo) && file_exists($curlCaInfo)) {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                curl_setopt($ch, CURLOPT_CAINFO, $curlCaInfo);
+                MlCategoryAiLogger::debug('Using php.ini curl.cainfo: ' . $curlCaInfo);
+            } else {
+                // Last resort: enable verification but let curl find certificates
+                // This works on most modern systems
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+                MlCategoryAiLogger::debug('Using system default SSL certificates');
+            }
+        }
+    }
+
+    /**
      * Constructor
      *
      * @param string $apiKey
@@ -326,8 +388,10 @@ class MlCategoryAiClient
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_TIMEOUT => 120,
             CURLOPT_CONNECTTIMEOUT => 30,
-            CURLOPT_SSL_VERIFYPEER => true,
         ]);
+
+        // Configure SSL certificates
+        $this->configureSslOptions($ch);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -543,8 +607,10 @@ class MlCategoryAiClient
                 CURLOPT_HTTPHEADER => $headers,
                 CURLOPT_TIMEOUT => 120,
                 CURLOPT_CONNECTTIMEOUT => 30,
-                CURLOPT_SSL_VERIFYPEER => true,
             ]);
+
+            // Configure SSL certificates
+            $this->configureSslOptions($ch);
 
             curl_multi_add_handle($multiHandle, $ch);
             $handles[$index] = [

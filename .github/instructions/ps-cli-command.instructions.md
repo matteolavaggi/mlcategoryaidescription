@@ -12,28 +12,72 @@ alwaysApply: true
 |----------|-------|
 | **Module Name** | `mlcategoryaidescription` |
 | **Module Path (Dev)** | `C:\Users\Pineapple\Documents\Visual Studio Code\dev.prestashop\modules\mlcategoryaidescription` |
+| **PS9 Path** | `D:\FTP\local\ps9.local` |
 | **PS8 Path** | `D:\FTP\local\ps8.local` |
-| **PS 1.7 Path** | `D:\FTP\local\www.speedmypresta.local\ps17` |
+| **PS 1.7 Path** | `D:\FTP\local\ps17.local` |
 
 ---
 
-## 🤖 LLM Instructions
+## 🤖 LLM Instructions for Module Deployment
 
-When executing PrestaShop module commands:
+**CRITICAL**: When user asks to install/deploy module to a PrestaShop instance, follow this 2-step workflow:
 
-1. **Use WSL for shell scripts** (`.sh` files) - run via `wsl -e bash -c 'command'`
-2. **Use PowerShell for PHP commands** (module install/upgrade/cache)
-3. **Use absolute paths** with proper escaping for the detected shell
-4. **Run as Administrator** when creating symlinks on Windows
-5. **Always clear cache** after install/upgrade operations
+### Step 1: Provide PowerShell Admin Commands
 
-### Shell Usage Rules
+First, output PowerShell commands for symlink creation that require Administrator privileges:
+
+```powershell
+# === RUN IN POWERSHELL AS ADMINISTRATOR ===
+$MODULE_NAME = "mlcategoryaidescription"
+$DEV_PATH = "C:\Users\Pineapple\Documents\Visual Studio Code\dev.prestashop\modules\mlcategoryaidescription"
+$PS_ROOT = "D:\FTP\local\ps9.local"  # Change to target PS version
+
+# Remove existing symlink/folder
+Remove-Item -LiteralPath "$PS_ROOT\modules\$MODULE_NAME" -Force -Recurse -ErrorAction SilentlyContinue
+
+# Create symlink
+New-Item -ItemType SymbolicLink -Path "$PS_ROOT\modules\$MODULE_NAME" -Target $DEV_PATH
+```
+
+Then ask: **"Symlink command ready. Run it in PowerShell as Administrator, then confirm when done."**
+
+### Step 2: After Confirmation, Run Install via WSL/Git Bash
+
+Once user confirms symlink is created, execute the install command:
+
+```bash
+# For PS9
+cd /d/FTP/local/ps9.local && rm -rf var/cache/* && php bin/console prestashop:module install mlcategoryaidescription
+
+# For PS8
+cd /d/FTP/local/ps8.local && rm -rf var/cache/* && php bin/console prestashop:module install mlcategoryaidescription
+
+# For PS 1.7
+cd /d/FTP/local/ps17.local && rm -rf var/cache/* && php bin/console prestashop:module install mlcategoryaidescription
+```
+
+### Quick Reference Commands
+
+| Action | Target | WSL/Git Bash Command |
+|--------|--------|---------------------|
+| Install | PS9 | `cd /d/FTP/local/ps9.local && rm -rf var/cache/* && php bin/console prestashop:module install mlcategoryaidescription` |
+| Install | PS8 | `cd /d/FTP/local/ps8.local && rm -rf var/cache/* && php bin/console prestashop:module install mlcategoryaidescription` |
+| Upgrade | PS9 | `cd /d/FTP/local/ps9.local && rm -rf var/cache/* && php bin/console prestashop:module upgrade mlcategoryaidescription` |
+| Upgrade | PS8 | `cd /d/FTP/local/ps8.local && rm -rf var/cache/* && php bin/console prestashop:module upgrade mlcategoryaidescription` |
+| Uninstall | PS9 | `cd /d/FTP/local/ps9.local && php bin/console prestashop:module uninstall mlcategoryaidescription && rm -rf var/cache/*` |
+| Uninstall | PS8 | `cd /d/FTP/local/ps8.local && php bin/console prestashop:module uninstall mlcategoryaidescription && rm -rf var/cache/*` |
+| Reset | PS8 | `cd /d/FTP/local/ps8.local && php bin/console prestashop:module uninstall mlcategoryaidescription && php bin/console prestashop:module install mlcategoryaidescription && rm -rf var/cache/*` |
+
+---
+
+## Shell Usage Rules
 
 | Task | Shell | Command Format |
 |------|-------|----------------|
-| Shell scripts (.sh) | **WSL** | `wsl -e bash -c 'cd "/mnt/c/..." && ./script.sh'` |
-| PHP commands | PowerShell | `cd D:\FTP\local\ps8.local; php bin/console ...` |
-| Git commands | Either | Works in both |
+| **Symlinks** | PowerShell (Admin) | User runs manually |
+| **Module commands** | WSL/Git Bash | `cd /d/FTP/local/psX.local && php bin/console ...` |
+| **Shell scripts (.sh)** | WSL | `wsl -e bash -c 'cd "/mnt/c/..." && ./script.sh'` |
+| **Git commands** | Either | Works in both |
 
 ### Path Conversion (Windows → WSL)
 
@@ -137,7 +181,7 @@ git push -u origin $VERSION
 $MODULE_NAME = "mlcategoryaidescription"
 $DEV_PATH = "C:\Users\Pineapple\Documents\Visual Studio Code\dev.prestashop\modules\mlcategoryaidescription"
 $PS8_ROOT = "D:\FTP\local\ps8.local"
-$PS17_ROOT = "D:\FTP\local\www.speedmypresta.local\ps17"
+$PS17_ROOT = "D:\FTP\local\ps17.local"
 ```
 
 ### Create Symlink (PrestaShop 8.x)
@@ -208,7 +252,7 @@ php bin/console cache:clear
 MODULE_NAME="mlcategoryaidescription"
 DEV_PATH="/c/Users/Pineapple/Documents/Visual Studio Code/dev.prestashop/modules/mlcategoryaidescription"
 PS8_ROOT="/d/FTP/local/ps8.local"
-PS17_ROOT="/d/FTP/local/www.speedmypresta.local/ps17"
+PS17_ROOT="/d/FTP/local/ps17.local"
 ```
 
 ### Create Symlink (Git Bash on Windows)
@@ -256,7 +300,7 @@ php bin/console cache:clear
 MODULE_NAME="mlcategoryaidescription"
 DEV_PATH="/mnt/c/Users/Pineapple/Documents/Visual Studio Code/dev.prestashop/modules/mlcategoryaidescription"
 PS8_ROOT="/mnt/d/FTP/local/ps8.local"
-PS17_ROOT="/mnt/d/FTP/local/www.speedmypresta.local/ps17"
+PS17_ROOT="/mnt/d/FTP/local/ps17.local"
 ```
 
 ### Create Symlink

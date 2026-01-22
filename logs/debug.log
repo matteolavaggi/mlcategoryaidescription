@@ -199,3 +199,9 @@
 [2026-01-22 09:37:19.307] [INFO] processBatch END - took 5496ms - processed=2 failed=0
 [2026-01-22 09:37:19.307] [DEBUG] updateJob took 0ms
 [2026-01-22 09:37:19.308] [INFO] Job #15 COMPLETED
+[2026-01-22 15:07:17.313] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 15:07:17.327] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 15:07:17.373] [DEBUG] API request END - 60ms - httpCode=0
+[2026-01-22 15:07:17.373] [ERROR] cURL error: SSL certificate problem: unable to get local issuer certificate
+[2026-01-22 15:07:17.397] [DEBUG] API request END - 70ms - httpCode=0
+[2026-01-22 15:07:17.397] [ERROR] cURL error: SSL certificate problem: unable to get local issuer certificate

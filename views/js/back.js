@@ -21,9 +21,29 @@
 
 /**
  * ML Category AI Description - Back Office JavaScript
+ * Compatible with PS 1.7.x and PS 8.x (ES5 syntax for older browsers)
  */
 (function () {
     'use strict';
+
+    // Helper function to safely add event listener
+    function addEvent(id, event, handler) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener(event, handler);
+        }
+    }
+
+    // Helper function to get direct children matching selector
+    function getDirectChild(parent, selector) {
+        var children = parent.children;
+        for (var i = 0; i < children.length; i++) {
+            if (children[i].matches && children[i].matches(selector)) {
+                return children[i];
+            }
+        }
+        return null;
+    }
 
     var MlCategoryAi = {
         ajaxUrl: null,
@@ -43,17 +63,17 @@
             var self = this;
 
             // Start generation button
-            document.getElementById('btn-start-generation')?.addEventListener('click', function () {
+            addEvent('btn-start-generation', 'click', function () {
                 self.startGeneration('browser');
             });
 
             // Start background button
-            document.getElementById('btn-start-background')?.addEventListener('click', function () {
+            addEvent('btn-start-background', 'click', function () {
                 self.startGeneration('background');
             });
 
             // Processing mode toggle
-            document.getElementById('processing-mode-select')?.addEventListener('change', function () {
+            addEvent('processing-mode-select', 'change', function () {
                 var mode = this.value;
                 var browserBtn = document.getElementById('btn-start-generation');
                 var backgroundBtn = document.getElementById('btn-start-background');
@@ -61,37 +81,37 @@
                 var helpBackground = document.getElementById('help-background');
 
                 if (mode === 'background') {
-                    browserBtn.style.display = 'none';
-                    backgroundBtn.style.display = 'inline-block';
-                    helpBrowser.style.display = 'none';
-                    helpBackground.style.display = 'inline';
+                    if (browserBtn) browserBtn.style.display = 'none';
+                    if (backgroundBtn) backgroundBtn.style.display = 'inline-block';
+                    if (helpBrowser) helpBrowser.style.display = 'none';
+                    if (helpBackground) helpBackground.style.display = 'inline';
                 } else {
-                    browserBtn.style.display = 'inline-block';
-                    backgroundBtn.style.display = 'none';
-                    helpBrowser.style.display = 'inline';
-                    helpBackground.style.display = 'none';
+                    if (browserBtn) browserBtn.style.display = 'inline-block';
+                    if (backgroundBtn) backgroundBtn.style.display = 'none';
+                    if (helpBrowser) helpBrowser.style.display = 'inline';
+                    if (helpBackground) helpBackground.style.display = 'none';
                 }
             });
 
             // Test API button
-            document.getElementById('btn-test-api')?.addEventListener('click', function () {
+            addEvent('btn-test-api', 'click', function () {
                 self.testApiConnection();
             });
 
             // Pause job button
-            document.getElementById('btn-pause-job')?.addEventListener('click', function () {
+            addEvent('btn-pause-job', 'click', function () {
                 var jobId = this.getAttribute('data-job-id');
                 self.pauseJob(jobId);
             });
 
             // Resume job button
-            document.getElementById('btn-resume-job')?.addEventListener('click', function () {
+            addEvent('btn-resume-job', 'click', function () {
                 var jobId = this.getAttribute('data-job-id');
                 self.resumeJob(jobId);
             });
 
             // Cancel job button
-            document.getElementById('btn-cancel-job')?.addEventListener('click', function () {
+            addEvent('btn-cancel-job', 'click', function () {
                 var jobId = this.getAttribute('data-job-id');
                 if (confirm('Are you sure you want to cancel this job?')) {
                     self.cancelJob(jobId);
@@ -99,121 +119,141 @@
             });
 
             // Category tree: Select all categories
-            document.getElementById('select-all-categories')?.addEventListener('click', function () {
+            addEvent('select-all-categories', 'click', function () {
                 var checkboxes = document.querySelectorAll('.category-checkbox');
-                checkboxes.forEach(function (cb) {
-                    cb.checked = true;
-                });
+                for (var i = 0; i < checkboxes.length; i++) {
+                    checkboxes[i].checked = true;
+                }
                 self.updateCategoryCount();
             });
 
             // Category tree: Deselect all categories
-            document.getElementById('deselect-all-categories')?.addEventListener('click', function () {
+            addEvent('deselect-all-categories', 'click', function () {
                 var checkboxes = document.querySelectorAll('.category-checkbox');
-                checkboxes.forEach(function (cb) {
-                    cb.checked = false;
-                });
+                for (var i = 0; i < checkboxes.length; i++) {
+                    checkboxes[i].checked = false;
+                }
                 self.updateCategoryCount();
             });
 
             // Category tree: Expand all
-            document.getElementById('expand-all-categories')?.addEventListener('click', function () {
+            addEvent('expand-all-categories', 'click', function () {
                 var toggles = document.querySelectorAll('.mlcatai-tree-toggle');
-                toggles.forEach(function (toggle) {
+                for (var i = 0; i < toggles.length; i++) {
+                    var toggle = toggles[i];
                     var node = toggle.closest('.mlcatai-tree-node');
-                    var children = node.querySelector('.mlcatai-tree-children');
-                    if (children) {
-                        children.classList.remove('collapsed');
-                        toggle.setAttribute('data-expanded', 'true');
-                        toggle.innerHTML = '<i class="icon icon-minus-square-o"></i>';
+                    if (node) {
+                        var children = node.querySelector('.mlcatai-tree-children');
+                        if (children) {
+                            children.classList.remove('collapsed');
+                            toggle.setAttribute('data-expanded', 'true');
+                            toggle.innerHTML = '<i class="icon icon-minus-square-o"></i>';
+                        }
                     }
-                });
+                }
             });
 
             // Category tree: Collapse all
-            document.getElementById('collapse-all-categories')?.addEventListener('click', function () {
+            addEvent('collapse-all-categories', 'click', function () {
                 var toggles = document.querySelectorAll('.mlcatai-tree-toggle');
-                toggles.forEach(function (toggle) {
+                for (var i = 0; i < toggles.length; i++) {
+                    var toggle = toggles[i];
                     var node = toggle.closest('.mlcatai-tree-node');
-                    var children = node.querySelector('.mlcatai-tree-children');
-                    if (children) {
-                        children.classList.add('collapsed');
-                        toggle.setAttribute('data-expanded', 'false');
-                        toggle.innerHTML = '<i class="icon icon-plus-square-o"></i>';
+                    if (node) {
+                        var children = node.querySelector('.mlcatai-tree-children');
+                        if (children) {
+                            children.classList.add('collapsed');
+                            toggle.setAttribute('data-expanded', 'false');
+                            toggle.innerHTML = '<i class="icon icon-plus-square-o"></i>';
+                        }
                     }
-                });
+                }
             });
 
             // Category tree: Toggle expand/collapse
-            document.querySelectorAll('.mlcatai-tree-toggle').forEach(function (toggle) {
-                toggle.addEventListener('click', function () {
+            var treeToggles = document.querySelectorAll('.mlcatai-tree-toggle');
+            for (var t = 0; t < treeToggles.length; t++) {
+                treeToggles[t].addEventListener('click', function () {
                     var node = this.closest('.mlcatai-tree-node');
-                    var children = node.querySelector('.mlcatai-tree-children');
-                    if (children) {
-                        var isExpanded = this.getAttribute('data-expanded') === 'true';
-                        if (isExpanded) {
-                            children.classList.add('collapsed');
-                            this.setAttribute('data-expanded', 'false');
-                            this.innerHTML = '<i class="icon icon-plus-square-o"></i>';
-                        } else {
-                            children.classList.remove('collapsed');
-                            this.setAttribute('data-expanded', 'true');
-                            this.innerHTML = '<i class="icon icon-minus-square-o"></i>';
+                    if (node) {
+                        var children = node.querySelector('.mlcatai-tree-children');
+                        if (children) {
+                            var isExpanded = this.getAttribute('data-expanded') === 'true';
+                            if (isExpanded) {
+                                children.classList.add('collapsed');
+                                this.setAttribute('data-expanded', 'false');
+                                this.innerHTML = '<i class="icon icon-plus-square-o"></i>';
+                            } else {
+                                children.classList.remove('collapsed');
+                                this.setAttribute('data-expanded', 'true');
+                                this.innerHTML = '<i class="icon icon-minus-square-o"></i>';
+                            }
                         }
                     }
                 });
-            });
+            }
 
             // Category tree: Select all subcategories button
-            document.querySelectorAll('.mlcatai-select-children').forEach(function (btn) {
-                btn.addEventListener('click', function (e) {
+            var selectChildrenBtns = document.querySelectorAll('.mlcatai-select-children');
+            for (var s = 0; s < selectChildrenBtns.length; s++) {
+                selectChildrenBtns[s].addEventListener('click', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
                     var node = this.closest('.mlcatai-tree-node');
-                    var checkboxes = node.querySelectorAll('.category-checkbox');
-                    var allChecked = Array.from(checkboxes).every(function (cb) {
-                        return cb.checked;
-                    });
-                    checkboxes.forEach(function (cb) {
-                        cb.checked = !allChecked;
-                    });
-                    self.updateCategoryCount();
+                    if (node) {
+                        var checkboxes = node.querySelectorAll('.category-checkbox');
+                        var allChecked = true;
+                        for (var c = 0; c < checkboxes.length; c++) {
+                            if (!checkboxes[c].checked) {
+                                allChecked = false;
+                                break;
+                            }
+                        }
+                        for (var c2 = 0; c2 < checkboxes.length; c2++) {
+                            checkboxes[c2].checked = !allChecked;
+                        }
+                        self.updateCategoryCount();
+                    }
                 });
-            });
+            }
 
             // Category tree: Update count on checkbox change
-            document.querySelectorAll('.category-checkbox').forEach(function (cb) {
-                cb.addEventListener('change', function () {
+            var categoryCheckboxes = document.querySelectorAll('.category-checkbox');
+            for (var cb = 0; cb < categoryCheckboxes.length; cb++) {
+                categoryCheckboxes[cb].addEventListener('change', function () {
                     self.updateCategoryCount();
                 });
-            });
+            }
 
             // Category search
             var searchInput = document.getElementById('category-search');
             var searchTimeout = null;
-            searchInput?.addEventListener('input', function () {
-                var query = this.value.toLowerCase().trim();
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(function () {
-                    self.filterCategories(query);
-                }, 150);
-            });
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    var query = this.value.toLowerCase().trim();
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(function () {
+                        self.filterCategories(query);
+                    }, 150);
+                });
+            }
 
             // Clear search button
-            document.getElementById('clear-category-search')?.addEventListener('click', function () {
-                var searchInput = document.getElementById('category-search');
-                if (searchInput) {
-                    searchInput.value = '';
+            addEvent('clear-category-search', 'click', function () {
+                var input = document.getElementById('category-search');
+                if (input) {
+                    input.value = '';
                     self.filterCategories('');
                 }
             });
 
             // Select all languages
-            document.getElementById('select-all-languages')?.addEventListener('change', function () {
+            addEvent('select-all-languages', 'change', function () {
+                var checked = this.checked;
                 var checkboxes = document.querySelectorAll('.lang-checkbox');
-                checkboxes.forEach(function (cb) {
-                    cb.checked = this.checked;
-                }, this);
+                for (var i = 0; i < checkboxes.length; i++) {
+                    checkboxes[i].checked = checked;
+                }
             });
 
             // Initialize category count and row colors
@@ -225,15 +265,16 @@
             // Apply alternating row colors to ALL visible rows (regardless of hierarchy)
             var items = document.querySelectorAll('.mlcatai-tree-item');
             var visibleIndex = 0;
-            items.forEach(function (item) {
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
                 var node = item.closest('.mlcatai-tree-node');
                 // Only count visible items
-                if (!node.classList.contains('search-hidden')) {
+                if (node && !node.classList.contains('search-hidden')) {
                     item.classList.remove('row-odd', 'row-even');
                     item.classList.add(visibleIndex % 2 === 0 ? 'row-even' : 'row-odd');
                     visibleIndex++;
                 }
-            });
+            }
         },
 
         updateCategoryCount: function () {
@@ -247,62 +288,71 @@
         filterCategories: function (query) {
             var nodes = document.querySelectorAll('.mlcatai-tree-node');
             var names = document.querySelectorAll('.mlcatai-tree-name');
+            var i, node, name, checkbox, categoryName, parent, toggle, prevSibling;
 
             // Remove all highlights
-            names.forEach(function (name) {
-                name.classList.remove('search-match');
-            });
+            for (i = 0; i < names.length; i++) {
+                names[i].classList.remove('search-match');
+            }
 
             if (!query) {
                 // Show all nodes
-                nodes.forEach(function (node) {
-                    node.classList.remove('search-hidden');
-                });
+                for (i = 0; i < nodes.length; i++) {
+                    nodes[i].classList.remove('search-hidden');
+                }
                 this.applyAlternatingRowColors();
                 return;
             }
 
             // Hide all first
-            nodes.forEach(function (node) {
-                node.classList.add('search-hidden');
-            });
+            for (i = 0; i < nodes.length; i++) {
+                nodes[i].classList.add('search-hidden');
+            }
 
             // Show matching nodes and their ancestors
-            nodes.forEach(function (node) {
-                var name = node.querySelector(':scope > .mlcatai-tree-item .mlcatai-tree-name');
-                var checkbox = node.querySelector(':scope > .mlcatai-tree-item .category-checkbox');
-                if (name && checkbox) {
-                    var categoryName = checkbox.getAttribute('data-name') || '';
-                    if (categoryName.includes(query)) {
-                        // Show this node
-                        node.classList.remove('search-hidden');
-                        name.classList.add('search-match');
+            for (i = 0; i < nodes.length; i++) {
+                node = nodes[i];
+                // Get direct child .mlcatai-tree-item
+                var treeItem = getDirectChild(node, '.mlcatai-tree-item');
+                if (treeItem) {
+                    name = treeItem.querySelector('.mlcatai-tree-name');
+                    checkbox = treeItem.querySelector('.category-checkbox');
+                    if (name && checkbox) {
+                        categoryName = checkbox.getAttribute('data-name') || '';
+                        if (categoryName.indexOf(query) !== -1) {
+                            // Show this node
+                            node.classList.remove('search-hidden');
+                            name.classList.add('search-match');
 
-                        // Show all ancestors
-                        var parent = node.parentElement;
-                        while (parent) {
-                            if (parent.classList && parent.classList.contains('mlcatai-tree-node')) {
-                                parent.classList.remove('search-hidden');
-                            }
-                            if (parent.classList && parent.classList.contains('mlcatai-tree-children')) {
-                                parent.classList.remove('collapsed');
-                                var toggle = parent.previousElementSibling?.querySelector('.mlcatai-tree-toggle');
-                                if (toggle) {
-                                    toggle.setAttribute('data-expanded', 'true');
-                                    toggle.innerHTML = '<i class="icon icon-minus-square-o"></i>';
+                            // Show all ancestors
+                            parent = node.parentElement;
+                            while (parent) {
+                                if (parent.classList && parent.classList.contains('mlcatai-tree-node')) {
+                                    parent.classList.remove('search-hidden');
                                 }
+                                if (parent.classList && parent.classList.contains('mlcatai-tree-children')) {
+                                    parent.classList.remove('collapsed');
+                                    prevSibling = parent.previousElementSibling;
+                                    if (prevSibling) {
+                                        toggle = prevSibling.querySelector('.mlcatai-tree-toggle');
+                                        if (toggle) {
+                                            toggle.setAttribute('data-expanded', 'true');
+                                            toggle.innerHTML = '<i class="icon icon-minus-square-o"></i>';
+                                        }
+                                    }
+                                }
+                                parent = parent.parentElement;
                             }
-                            parent = parent.parentElement;
-                        }
 
-                        // Show all descendants
-                        var descendants = node.querySelectorAll('.mlcatai-tree-node');
-                        descendants.forEach(function (desc) {
-                            desc.classList.remove('search-hidden');
-                        });
+                            // Show all descendants
+                            var descendants = node.querySelectorAll('.mlcatai-tree-node');
+                            for (var d = 0; d < descendants.length; d++) {
+                                descendants[d].classList.remove('search-hidden');
+                            }
+                        }
                     }
                 }
-            });
+            }
 
             // Re-apply alternating colors after filtering
             this.applyAlternatingRowColors();
@@ -316,8 +366,8 @@
                 var statusSpan = document.getElementById('job-status');
 
                 if (statusSpan && statusSpan.textContent === 'paused') {
-                    pauseBtn.style.display = 'none';
-                    resumeBtn.style.display = 'inline-block';
+                    if (pauseBtn) pauseBtn.style.display = 'none';
+                    if (resumeBtn) resumeBtn.style.display = 'inline-block';
                 }
 
                 // Only auto-resume if job was running AND was started in browser mode
@@ -326,8 +376,8 @@
                     // Don't auto-resume - user must click Resume button
                     // This prevents background jobs from being hijacked
                     console.log('[MLCATAI] Found running job, but NOT auto-resuming. Use Resume button.');
-                    pauseBtn.style.display = 'none';
-                    resumeBtn.style.display = 'inline-block';
+                    if (pauseBtn) pauseBtn.style.display = 'none';
+                    if (resumeBtn) resumeBtn.style.display = 'inline-block';
                 }
             }
         },
@@ -345,9 +395,10 @@
 
             // Collect selected categories from checkboxes
             var categoryCheckboxes = document.querySelectorAll('.category-checkbox:checked');
-            var categoryIds = Array.from(categoryCheckboxes).map(function (cb) {
-                return cb.value;
-            });
+            var categoryIds = [];
+            for (var i = 0; i < categoryCheckboxes.length; i++) {
+                categoryIds.push(categoryCheckboxes[i].value);
+            }
 
             if (categoryIds.length === 0) {
                 alert('Please select at least one category');
@@ -356,9 +407,10 @@
 
             // Collect selected languages
             var langCheckboxes = document.querySelectorAll('.lang-checkbox:checked');
-            var languageIds = Array.from(langCheckboxes).map(function (cb) {
-                return cb.value;
-            });
+            var languageIds = [];
+            for (var l = 0; l < langCheckboxes.length; l++) {
+                languageIds.push(langCheckboxes[l].value);
+            }
 
             if (languageIds.length === 0) {
                 alert('Please select at least one language');
@@ -367,9 +419,10 @@
 
             // Collect selected fields
             var fieldCheckboxes = document.querySelectorAll('.field-checkbox:checked');
-            var fields = Array.from(fieldCheckboxes).map(function (cb) {
-                return cb.value;
-            });
+            var fields = [];
+            for (var f = 0; f < fieldCheckboxes.length; f++) {
+                fields.push(fieldCheckboxes[f].value);
+            }
 
             if (fields.length === 0) {
                 alert('Please select at least one field to generate');
@@ -426,7 +479,8 @@
 
                     // Log batch results
                     if (response.batch_results) {
-                        response.batch_results.forEach(function (result) {
+                        for (var i = 0; i < response.batch_results.length; i++) {
+                            var result = response.batch_results[i];
                             if (result.skipped) {
                                 self.log('⏭ Skipped: Category ' + result.id_category + ', Lang ' + result.id_lang + ', ' + result.field_type);
                             } else if (result.success) {
@@ -434,7 +488,7 @@
                             } else {
                                 self.log('✗ Error: Category ' + result.id_category + ' - ' + result.error);
                             }
-                        });
+                        }
                     }
 
                     if (response.completed) {
@@ -469,9 +523,12 @@
             this.ajaxRequest('pauseJob', { job_id: jobId }, function (response) {
                 if (response.success) {
                     self.isProcessing = false;
-                    document.getElementById('btn-pause-job').style.display = 'none';
-                    document.getElementById('btn-resume-job').style.display = 'inline-block';
-                    document.getElementById('job-status').textContent = 'paused';
+                    var pauseBtn = document.getElementById('btn-pause-job');
+                    var resumeBtn = document.getElementById('btn-resume-job');
+                    var statusSpan = document.getElementById('job-status');
+                    if (pauseBtn) pauseBtn.style.display = 'none';
+                    if (resumeBtn) resumeBtn.style.display = 'inline-block';
+                    if (statusSpan) statusSpan.textContent = 'paused';
                     self.log('Job paused');
                 } else {
                     alert('Error: ' + response.message);
@@ -484,9 +541,12 @@
 
             this.ajaxRequest('resumeJob', { job_id: jobId }, function (response) {
                 if (response.success) {
-                    document.getElementById('btn-pause-job').style.display = 'inline-block';
-                    document.getElementById('btn-resume-job').style.display = 'none';
-                    document.getElementById('job-status').textContent = 'running';
+                    var pauseBtn = document.getElementById('btn-pause-job');
+                    var resumeBtn = document.getElementById('btn-resume-job');
+                    var statusSpan = document.getElementById('job-status');
+                    if (pauseBtn) pauseBtn.style.display = 'inline-block';
+                    if (resumeBtn) resumeBtn.style.display = 'none';
+                    if (statusSpan) statusSpan.textContent = 'running';
                     self.currentJobId = jobId;
                     self.log('Job resumed');
                     self.processNextBatch();
@@ -513,6 +573,8 @@
         testApiConnection: function () {
             var self = this;
             var btn = document.getElementById('btn-test-api');
+            if (!btn) return;
+
             var originalHtml = btn.innerHTML;
 
             btn.innerHTML = '<i class="icon icon-spinner icon-spin"></i> Testing...';
@@ -531,8 +593,10 @@
         },
 
         showProgress: function () {
-            document.getElementById('mlcategoryai-new-job-form').style.display = 'none';
-            document.getElementById('mlcategoryai-progress').style.display = 'block';
+            var form = document.getElementById('mlcategoryai-new-job-form');
+            var progress = document.getElementById('mlcategoryai-progress');
+            if (form) form.style.display = 'none';
+            if (progress) progress.style.display = 'block';
         },
 
         updateProgress: function (percent, processed, total) {
@@ -587,18 +651,24 @@
                 logDiv.parentNode.appendChild(buttonsDiv);
 
                 // Bind button events
-                document.getElementById('btn-close-reload').addEventListener('click', function () {
-                    location.reload();
-                });
+                var reloadBtn = document.getElementById('btn-close-reload');
+                if (reloadBtn) {
+                    reloadBtn.addEventListener('click', function () {
+                        location.reload();
+                    });
+                }
 
-                document.getElementById('btn-view-log-after').addEventListener('click', function () {
-                    // Scroll to debug log section and open it
-                    var viewLogBtn = document.getElementById('btn-view-debug-log');
-                    if (viewLogBtn) {
-                        viewLogBtn.scrollIntoView({ behavior: 'smooth' });
-                        viewLogBtn.click();
-                    }
-                });
+                var viewLogBtn = document.getElementById('btn-view-log-after');
+                if (viewLogBtn) {
+                    viewLogBtn.addEventListener('click', function () {
+                        // Scroll to debug log section and open it
+                        var debugLogBtn = document.getElementById('btn-view-debug-log');
+                        if (debugLogBtn) {
+                            debugLogBtn.scrollIntoView({ behavior: 'smooth' });
+                            debugLogBtn.click();
+                        }
+                    });
+                }
 
                 // Remove active striped animation from progress bar
                 var progressBar = document.getElementById('generation-progress-bar');
@@ -618,16 +688,18 @@
             formData.append('token', this.token);
 
             // Add data fields
-            Object.keys(data).forEach(function (key) {
+            var keys = Object.keys(data);
+            for (var i = 0; i < keys.length; i++) {
+                var key = keys[i];
                 var value = data[key];
                 if (Array.isArray(value)) {
-                    value.forEach(function (item) {
-                        formData.append(key + '[]', item);
-                    });
+                    for (var j = 0; j < value.length; j++) {
+                        formData.append(key + '[]', value[j]);
+                    }
                 } else {
                     formData.append(key, value);
                 }
-            });
+            }
 
             fetch(this.ajaxUrl, {
                 method: 'POST',
@@ -636,9 +708,9 @@
                 .then(function (response) {
                     return response.json();
                 })
-                .then(function (data) {
+                .then(function (responseData) {
                     if (callback) {
-                        callback(data);
+                        callback(responseData);
                     }
                 })
                 .catch(function (error) {
@@ -650,8 +722,41 @@
         }
     };
 
+    // Wait for module content to be available (PS 1.7.x loads content after DOMContentLoaded)
+    function waitForElement(selector, callback, maxAttempts) {
+        var attempts = 0;
+        maxAttempts = maxAttempts || 50; // 5 seconds max
+
+        function check() {
+            attempts++;
+            var element = document.querySelector(selector);
+            if (element) {
+                callback();
+            } else if (attempts < maxAttempts) {
+                setTimeout(check, 100);
+            } else {
+                console.log('[MLCATAI] Module content not found after ' + maxAttempts + ' attempts');
+            }
+        }
+        check();
+    }
+
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function () {
-        MlCategoryAi.init();
+        // Wait for module panel to exist before initializing
+        waitForElement('#mlcategoryai-batch-panel', function () {
+            console.log('[MLCATAI] Module content found, initializing...');
+            MlCategoryAi.init();
+        });
+    });
+
+    // Also try on window load as fallback
+    window.addEventListener('load', function () {
+        var panel = document.getElementById('mlcategoryai-batch-panel');
+        if (panel && !window.mlcategoryai_initialized) {
+            console.log('[MLCATAI] Initializing on window.load fallback...');
+            window.mlcategoryai_initialized = true;
+            MlCategoryAi.init();
+        }
     });
 })();
