@@ -214,20 +214,36 @@ Edit prompt templates for each field type and language. Include context about yo
 
 Use these in your prompt templates:
 
+#### Category Placeholders
 | Placeholder | Description | Example |
 |-------------|-------------|---------|
 | `{category_name}` | Category name | Men's Shoes |
 | `{category_breadcrumb}` | Full category path (all parents) | Clothing > Footwear > Men's Shoes |
 | `{category_description}` | Current category description | Browse our collection... |
+| `{category_meta_title}` | Current meta title | Men's Shoes - MyShop |
+| `{category_meta_description}` | Current meta description | Shop the best... |
+| `{category_meta_keywords}` | Current meta keywords | shoes, men, leather |
 | `{category_url}` | Full URL to category page | https://myshop.com/en/mens-shoes |
 | `{parent_category_name}` | Direct parent category name | Footwear |
+
+#### Site/Shop Placeholders
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
 | `{site_name}` | Your shop name | MyShop |
-| `{site_description}` | Shop meta description | Your online store... |
+| `{site_description}` | Shop homepage meta description | Your online store... |
 | `{shop_url}` | Shop base URL | https://myshop.com/ |
+
+#### Product Placeholders
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
 | `{product_list}` | Up to 50 product names | Product A, Product B... |
 | `{product_count}` | Number of products in category | 42 |
 | `{first_products:N}` | First N products from category | {first_products:10} |
 | `{random_products:N}` | N random products from category | {random_products:5} |
+
+#### Language Placeholders
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
 | `{language_code}` | Target language ISO code | en, fr, de |
 | `{language_name}` | Target language full name | English, Français |
 
