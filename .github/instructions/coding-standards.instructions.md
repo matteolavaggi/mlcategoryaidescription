@@ -97,6 +97,30 @@ if (el) { el.addEventListener('click', handler); }
 
 Run linter: `npm run lint-fix`
 
+### ⚠️ Admin Asset Cache Busting (CRITICAL)
+
+Admin JS/CSS loaded via `hookDisplayBackOfficeHeader` are **NOT** merged by PrestaShop's asset pipeline. They are served as separate files and can be aggressively cached by CDNs (Cloudflare) and browsers.
+
+**Always add version query parameter:**
+
+```php
+public function hookDisplayBackOfficeHeader()
+{
+    if (Tools::getValue('configure') == $this->name) {
+        // REQUIRED: Add version parameter to bust CDN/proxy caches
+        $cacheBuster = '?v=' . $this->version;
+        $this->context->controller->addJS($this->_path . 'views/js/back.js' . $cacheBuster);
+        $this->context->controller->addCSS($this->_path . 'views/css/back.css' . $cacheBuster);
+    }
+}
+```
+
+**Why this matters:**
+- Cloudflare and other CDNs cache static assets indefinitely
+- Without version parameter, users get stale JS/CSS after module updates
+- `cf-cache-status: HIT` means old cached version is served
+- Version parameter (e.g., `?v=1.5.0`) forces CDN to fetch fresh file on each release
+
 ## CSS/Sass Rules
 
 ```scss

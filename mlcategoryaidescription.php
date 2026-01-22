@@ -1429,8 +1429,10 @@ Requisiti:
     public function hookDisplayBackOfficeHeader()
     {
         if (Tools::getValue('configure') == $this->name) {
-            $this->context->controller->addJS($this->_path . 'views/js/back.js');
-            $this->context->controller->addCSS($this->_path . 'views/css/back.css');
+            // Add version parameter to bust CDN/proxy caches (e.g., Cloudflare)
+            $cacheBuster = '?v=' . $this->version;
+            $this->context->controller->addJS($this->_path . 'views/js/back.js' . $cacheBuster);
+            $this->context->controller->addCSS($this->_path . 'views/css/back.css' . $cacheBuster);
 
             // Add AJAX configuration for JavaScript
             Media::addJsDef([

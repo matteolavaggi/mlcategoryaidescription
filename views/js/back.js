@@ -752,26 +752,31 @@
         check();
     }
 
-    // Initialize when DOM is ready
-    document.addEventListener('DOMContentLoaded', function () {
-        // Wait for module panel to exist before initializing
-        waitForElement('#mlcategoryai-batch-panel', function () {
-            if (window.mlcategoryai_initialized) {
-                return;
-            }
+    // Initialize the module
+    function initModule() {
+        if (window.mlcategoryai_initialized) {
+            return;
+        }
+        var panel = document.getElementById('mlcategoryai-batch-panel');
+        if (panel) {
             window.mlcategoryai_initialized = true;
             console.log('[MLCATAI] Module content found, initializing...');
             MlCategoryAi.init();
-        });
+        }
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function () {
+        // Wait for module panel to exist before initializing
+        waitForElement('#mlcategoryai-batch-panel', initModule);
     });
 
     // Also try on window load as fallback
-    window.addEventListener('load', function () {
-        var panel = document.getElementById('mlcategoryai-batch-panel');
-        if (panel && !window.mlcategoryai_initialized) {
-            window.mlcategoryai_initialized = true;
-            console.log('[MLCATAI] Initializing on window.load fallback...');
-            MlCategoryAi.init();
-        }
-    });
+    window.addEventListener('load', initModule);
+
+    // If document is already loaded (script loaded late), init immediately
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        // Use setTimeout to ensure panel is in DOM
+        setTimeout(initModule, 0);
+    }
 })();
