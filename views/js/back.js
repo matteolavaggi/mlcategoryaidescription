@@ -98,13 +98,113 @@
                 }
             });
 
-            // Select all categories
-            document.getElementById('select-all-categories')?.addEventListener('change', function () {
-                var select = document.getElementById('category-select');
-                if (select) {
-                    Array.from(select.options).forEach(function (option) {
-                        option.selected = this.checked;
-                    }, this);
+            // Category tree: Select all categories
+            document.getElementById('select-all-categories')?.addEventListener('click', function () {
+                var checkboxes = document.querySelectorAll('.category-checkbox');
+                checkboxes.forEach(function (cb) {
+                    cb.checked = true;
+                });
+                self.updateCategoryCount();
+            });
+
+            // Category tree: Deselect all categories
+            document.getElementById('deselect-all-categories')?.addEventListener('click', function () {
+                var checkboxes = document.querySelectorAll('.category-checkbox');
+                checkboxes.forEach(function (cb) {
+                    cb.checked = false;
+                });
+                self.updateCategoryCount();
+            });
+
+            // Category tree: Expand all
+            document.getElementById('expand-all-categories')?.addEventListener('click', function () {
+                var toggles = document.querySelectorAll('.mlcatai-tree-toggle');
+                toggles.forEach(function (toggle) {
+                    var node = toggle.closest('.mlcatai-tree-node');
+                    var children = node.querySelector('.mlcatai-tree-children');
+                    if (children) {
+                        children.classList.remove('collapsed');
+                        toggle.setAttribute('data-expanded', 'true');
+                        toggle.innerHTML = '<i class="icon icon-minus-square-o"></i>';
+                    }
+                });
+            });
+
+            // Category tree: Collapse all
+            document.getElementById('collapse-all-categories')?.addEventListener('click', function () {
+                var toggles = document.querySelectorAll('.mlcatai-tree-toggle');
+                toggles.forEach(function (toggle) {
+                    var node = toggle.closest('.mlcatai-tree-node');
+                    var children = node.querySelector('.mlcatai-tree-children');
+                    if (children) {
+                        children.classList.add('collapsed');
+                        toggle.setAttribute('data-expanded', 'false');
+                        toggle.innerHTML = '<i class="icon icon-plus-square-o"></i>';
+                    }
+                });
+            });
+
+            // Category tree: Toggle expand/collapse
+            document.querySelectorAll('.mlcatai-tree-toggle').forEach(function (toggle) {
+                toggle.addEventListener('click', function () {
+                    var node = this.closest('.mlcatai-tree-node');
+                    var children = node.querySelector('.mlcatai-tree-children');
+                    if (children) {
+                        var isExpanded = this.getAttribute('data-expanded') === 'true';
+                        if (isExpanded) {
+                            children.classList.add('collapsed');
+                            this.setAttribute('data-expanded', 'false');
+                            this.innerHTML = '<i class="icon icon-plus-square-o"></i>';
+                        } else {
+                            children.classList.remove('collapsed');
+                            this.setAttribute('data-expanded', 'true');
+                            this.innerHTML = '<i class="icon icon-minus-square-o"></i>';
+                        }
+                    }
+                });
+            });
+
+            // Category tree: Select all subcategories button
+            document.querySelectorAll('.mlcatai-select-children').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var node = this.closest('.mlcatai-tree-node');
+                    var checkboxes = node.querySelectorAll('.category-checkbox');
+                    var allChecked = Array.from(checkboxes).every(function (cb) {
+                        return cb.checked;
+                    });
+                    checkboxes.forEach(function (cb) {
+                        cb.checked = !allChecked;
+                    });
+                    self.updateCategoryCount();
+                });
+            });
+
+            // Category tree: Update count on checkbox change
+            document.querySelectorAll('.category-checkbox').forEach(function (cb) {
+                cb.addEventListener('change', function () {
+                    self.updateCategoryCount();
+                });
+            });
+
+            // Category search
+            var searchInput = document.getElementById('category-search');
+            var searchTimeout = null;
+            searchInput?.addEventListener('input', function () {
+                var query = this.value.toLowerCase().trim();
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function () {
+                    self.filterCategories(query);
+                }, 150);
+            });
+
+            // Clear search button
+            document.getElementById('clear-category-search')?.addEventListener('click', function () {
+                var searchInput = document.getElementById('category-search');
+                if (searchInput) {
+                    searchInput.value = '';
+                    self.filterCategories('');
                 }
             });
 
@@ -114,6 +214,77 @@
                 checkboxes.forEach(function (cb) {
                     cb.checked = this.checked;
                 }, this);
+            });
+
+            // Initialize category count
+            this.updateCategoryCount();
+        },
+
+        updateCategoryCount: function () {
+            var count = document.querySelectorAll('.category-checkbox:checked').length;
+            var countSpan = document.getElementById('selected-categories-count');
+            if (countSpan) {
+                countSpan.textContent = count;
+            }
+        },
+
+        filterCategories: function (query) {
+            var nodes = document.querySelectorAll('.mlcatai-tree-node');
+            var names = document.querySelectorAll('.mlcatai-tree-name');
+
+            // Remove all highlights
+            names.forEach(function (name) {
+                name.classList.remove('search-match');
+            });
+
+            if (!query) {
+                // Show all nodes
+                nodes.forEach(function (node) {
+                    node.classList.remove('search-hidden');
+                });
+                return;
+            }
+
+            // Hide all first
+            nodes.forEach(function (node) {
+                node.classList.add('search-hidden');
+            });
+
+            // Show matching nodes and their ancestors
+            nodes.forEach(function (node) {
+                var name = node.querySelector(':scope > .mlcatai-tree-item .mlcatai-tree-name');
+                var checkbox = node.querySelector(':scope > .mlcatai-tree-item .category-checkbox');
+                if (name && checkbox) {
+                    var categoryName = checkbox.getAttribute('data-name') || '';
+                    if (categoryName.includes(query)) {
+                        // Show this node
+                        node.classList.remove('search-hidden');
+                        name.classList.add('search-match');
+
+                        // Show all ancestors
+                        var parent = node.parentElement;
+                        while (parent) {
+                            if (parent.classList && parent.classList.contains('mlcatai-tree-node')) {
+                                parent.classList.remove('search-hidden');
+                            }
+                            if (parent.classList && parent.classList.contains('mlcatai-tree-children')) {
+                                parent.classList.remove('collapsed');
+                                var toggle = parent.previousElementSibling?.querySelector('.mlcatai-tree-toggle');
+                                if (toggle) {
+                                    toggle.setAttribute('data-expanded', 'true');
+                                    toggle.innerHTML = '<i class="icon icon-minus-square-o"></i>';
+                                }
+                            }
+                            parent = parent.parentElement;
+                        }
+
+                        // Show all descendants
+                        var descendants = node.querySelectorAll('.mlcatai-tree-node');
+                        descendants.forEach(function (desc) {
+                            desc.classList.remove('search-hidden');
+                        });
+                    }
+                }
             });
         },
 
@@ -152,10 +323,10 @@
 
             console.log('[MLCATAI] startGeneration called with mode:', mode);
 
-            // Collect selected categories
-            var categorySelect = document.getElementById('category-select');
-            var categoryIds = Array.from(categorySelect.selectedOptions).map(function (opt) {
-                return opt.value;
+            // Collect selected categories from checkboxes
+            var categoryCheckboxes = document.querySelectorAll('.category-checkbox:checked');
+            var categoryIds = Array.from(categoryCheckboxes).map(function (cb) {
+                return cb.value;
             });
 
             if (categoryIds.length === 0) {

@@ -54,20 +54,71 @@
 			<div class="col-lg-6">
 				<div class="form-group">
 					<label class="control-label">{l s='Select Categories' mod='mlcategoryaidescription'}</label>
-					<div class="checkbox">
-						<label>
-							<input type="checkbox" id="select-all-categories">
-							<strong>{l s='Select All' mod='mlcategoryaidescription'}</strong>
-						</label>
+					
+					{* Search and controls *}
+					<div class="mlcatai-category-controls">
+						<div class="input-group" style="margin-bottom: 10px;">
+							<span class="input-group-addon"><i class="icon icon-search"></i></span>
+							<input type="text" id="category-search" class="form-control" placeholder="{l s='Search categories...' mod='mlcategoryaidescription'}">
+							<span class="input-group-btn">
+								<button type="button" class="btn btn-default" id="clear-category-search" title="{l s='Clear search' mod='mlcategoryaidescription'}">
+									<i class="icon icon-times"></i>
+								</button>
+							</span>
+						</div>
+						<div class="btn-group btn-group-sm" style="margin-bottom: 10px;">
+							<button type="button" class="btn btn-default" id="select-all-categories">
+								<i class="icon icon-check-square-o"></i> {l s='Select All' mod='mlcategoryaidescription'}
+							</button>
+							<button type="button" class="btn btn-default" id="deselect-all-categories">
+								<i class="icon icon-square-o"></i> {l s='Deselect All' mod='mlcategoryaidescription'}
+							</button>
+							<button type="button" class="btn btn-default" id="expand-all-categories">
+								<i class="icon icon-plus-square-o"></i> {l s='Expand All' mod='mlcategoryaidescription'}
+							</button>
+							<button type="button" class="btn btn-default" id="collapse-all-categories">
+								<i class="icon icon-minus-square-o"></i> {l s='Collapse All' mod='mlcategoryaidescription'}
+							</button>
+						</div>
 					</div>
-					<select id="category-select" class="form-control" multiple size="10">
-						{foreach from=$categories item=category}
-						<option value="{$category.id_category|escape:'htmlall':'UTF-8'}">
-							{$category.name|escape:'htmlall':'UTF-8'}
-						</option>
-						{/foreach}
-					</select>
-					<p class="help-block">{l s='Hold Ctrl/Cmd to select multiple categories' mod='mlcategoryaidescription'}</p>
+					
+					{* Category tree container *}
+					<div id="category-tree-container" class="mlcatai-category-tree">
+						{function name=categoryTree categories=[] level=0}
+							{foreach from=$categories item=category}
+							<div class="mlcatai-tree-node" data-id="{$category.id_category|escape:'htmlall':'UTF-8'}" data-level="{$level|escape:'htmlall':'UTF-8'}">
+								<div class="mlcatai-tree-item" style="padding-left: {($level * 20)|escape:'htmlall':'UTF-8'}px;">
+									{if isset($category.children) && $category.children|@count > 0}
+									<span class="mlcatai-tree-toggle" data-expanded="true">
+										<i class="icon icon-minus-square-o"></i>
+									</span>
+									{else}
+									<span class="mlcatai-tree-toggle-placeholder"></span>
+									{/if}
+									<label class="mlcatai-tree-label">
+										<input type="checkbox" class="category-checkbox" value="{$category.id_category|escape:'htmlall':'UTF-8'}" data-name="{$category.name|escape:'htmlall':'UTF-8'|lower}">
+										<span class="mlcatai-tree-name">{$category.name|escape:'htmlall':'UTF-8'}</span>
+									</label>
+									{if isset($category.children) && $category.children|@count > 0}
+									<button type="button" class="btn btn-xs btn-link mlcatai-select-children" title="{l s='Select all subcategories' mod='mlcategoryaidescription'}">
+										<i class="icon icon-sitemap"></i>
+									</button>
+									{/if}
+								</div>
+								{if isset($category.children) && $category.children|@count > 0}
+								<div class="mlcatai-tree-children">
+									{call name=categoryTree categories=$category.children level=$level+1}
+								</div>
+								{/if}
+							</div>
+							{/foreach}
+						{/function}
+						{call name=categoryTree categories=$categories_tree level=0}
+					</div>
+					
+					<p class="help-block">
+						<span id="selected-categories-count">0</span> {l s='categories selected' mod='mlcategoryaidescription'}
+					</p>
 				</div>
 			</div>
 			<div class="col-lg-6">

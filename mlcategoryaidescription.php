@@ -88,7 +88,7 @@ class Mlcategoryaidescription extends Module
     {
         $this->name = 'mlcategoryaidescription';
         $this->tab = 'administration';
-        $this->version = '1.4.3';
+        $this->version = '1.5.0';
         $this->author = '2win.agency';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -775,6 +775,7 @@ Requisiti:
             'ajax_token' => $this->getAjaxToken(),
             'languages' => Language::getLanguages(true),
             'categories' => $this->getCategoriesForSelect(),
+            'categories_tree' => $this->getCategoriesTree(),
             'current_job' => $this->getCurrentRunningJob(),
             'pending_jobs' => $this->getAllPendingJobs(),
             'run_stats' => MlCategoryAiRunStats::getRecentRuns(10),
@@ -839,7 +840,7 @@ Requisiti:
     }
 
     /**
-     * Get categories for select input
+     * Get categories for select input (flat list with hierarchy info)
      *
      * @return array
      */
@@ -853,7 +854,52 @@ Requisiti:
         );
 
         $result = [];
-        $this->flattenCategoryTree($categories, $result, 0);
+        $this->flattenCategoryTree($categories, $result, 0, null);
+
+        return $result;
+    }
+
+    /**
+     * Get nested categories tree structure
+     *
+     * @return array
+     */
+    protected function getCategoriesTree()
+    {
+        $rootCategory = Category::getRootCategory();
+        $categories = Category::getNestedCategories(
+            $rootCategory->id,
+            $this->context->language->id,
+            true
+        );
+
+        return $this->buildCategoryTreeArray($categories);
+    }
+
+    /**
+     * Build tree array from nested categories
+     *
+     * @param array $categories
+     *
+     * @return array
+     */
+    protected function buildCategoryTreeArray($categories)
+    {
+        $result = [];
+
+        foreach ($categories as $category) {
+            $node = [
+                'id_category' => (int) $category['id_category'],
+                'name' => $category['name'],
+                'children' => [],
+            ];
+
+            if (!empty($category['children'])) {
+                $node['children'] = $this->buildCategoryTreeArray($category['children']);
+            }
+
+            $result[] = $node;
+        }
 
         return $result;
     }
@@ -864,18 +910,21 @@ Requisiti:
      * @param array $categories
      * @param array $result
      * @param int $level
+     * @param int|null $parentId
      */
-    protected function flattenCategoryTree($categories, &$result, $level = 0)
+    protected function flattenCategoryTree($categories, &$result, $level = 0, $parentId = null)
     {
         foreach ($categories as $category) {
             $result[] = [
-                'id_category' => $category['id_category'],
+                'id_category' => (int) $category['id_category'],
                 'name' => str_repeat('— ', $level) . $category['name'],
+                'name_plain' => $category['name'],
                 'level' => $level,
+                'id_parent' => $parentId,
             ];
 
             if (!empty($category['children'])) {
-                $this->flattenCategoryTree($category['children'], $result, $level + 1);
+                $this->flattenCategoryTree($category['children'], $result, $level + 1, (int) $category['id_category']);
             }
         }
     }

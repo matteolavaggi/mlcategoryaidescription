@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-01-22
+
+### Added
+- **New category selector UI** with tree-based structure
+- Search functionality to filter categories in real-time
+- Checkbox-based selection (no more Ctrl+click needed)
+- "Select All" and "Deselect All" buttons
+- "Expand All" and "Collapse All" buttons for tree navigation
+- "Select all subcategories" button on each parent category
+- Selected categories counter
+- Visual highlighting for search matches
+
+### Changed
+- Replaced multi-select dropdown with interactive tree component
+- Improved UX for selecting large numbers of categories
+
 ## [1.4.3] - 2026-01-22
 
 ### Added

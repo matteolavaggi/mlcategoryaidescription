@@ -2,7 +2,7 @@
 <module>
 	<name>mlcategoryaidescription</name>
 	<displayName><![CDATA[ML Category AI Description]]></displayName>
-	<version><![CDATA[1.4.3]]></version>
+	<version><![CDATA[1.5.0]]></version>
 	<description><![CDATA[Generate category descriptions, meta titles and meta descriptions using AI (OpenAI compatible).]]></description>
 	<author><![CDATA[2win.agency]]></author>
 	<tab><![CDATA[administration]]></tab>
