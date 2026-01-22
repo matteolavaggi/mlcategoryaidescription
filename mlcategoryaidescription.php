@@ -88,7 +88,7 @@ class Mlcategoryaidescription extends Module
     {
         $this->name = 'mlcategoryaidescription';
         $this->tab = 'administration';
-        $this->version = '1.4.2';
+        $this->version = '1.4.3';
         $this->author = '2win.agency';
         $this->need_instance = 0;
         $this->bootstrap = true;

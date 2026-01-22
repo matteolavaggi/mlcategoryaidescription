@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-01-22
+
 ### Added
 - New placeholder `{category_breadcrumb}` - full category path (e.g., "Clothing > Socks > Wool > Merino")
 - New placeholder `{category_url}` - full URL to category page
@@ -15,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `{site_description}` now correctly reads from ps_meta_lang (index page) instead of non-existent PS_META_DESCRIPTION
+
+### Changed
+- Upgrade script resets prompt templates to apply new placeholders
 
 ## [1.4.2] - 2026-01-22
 
