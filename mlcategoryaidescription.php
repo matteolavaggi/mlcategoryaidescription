@@ -280,7 +280,7 @@ class Mlcategoryaidescription extends Module
      *
      * @return bool
      */
-    protected function installDefaultPromptTemplates()
+    public function installDefaultPromptTemplates()
     {
         $languages = Language::getLanguages(true);
         $idShop = (int) Shop::getContextShopID();
