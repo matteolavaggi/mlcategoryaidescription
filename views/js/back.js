@@ -129,18 +129,28 @@
                     resumeBtn.style.display = 'inline-block';
                 }
 
-                // Auto-resume if running
+                // Only auto-resume if job was running AND was started in browser mode
+                // Check for a marker that indicates browser mode was active
                 if (statusSpan && statusSpan.textContent === 'running') {
-                    var jobId = pauseBtn.getAttribute('data-job-id');
-                    this.currentJobId = jobId;
-                    this.processNextBatch();
+                    // Don't auto-resume - user must click Resume button
+                    // This prevents background jobs from being hijacked
+                    console.log('[MLCATAI] Found running job, but NOT auto-resuming. Use Resume button.');
+                    pauseBtn.style.display = 'none';
+                    resumeBtn.style.display = 'inline-block';
                 }
             }
         },
 
         startGeneration: function (mode) {
             var self = this;
-            mode = mode || 'browser';
+
+            // Get mode from parameter or from select dropdown
+            if (!mode) {
+                var modeSelect = document.getElementById('processing-mode-select');
+                mode = modeSelect ? modeSelect.value : 'browser';
+            }
+
+            console.log('[MLCATAI] startGeneration called with mode:', mode);
 
             // Collect selected categories
             var categorySelect = document.getElementById('category-select');
@@ -178,21 +188,25 @@
             var writeMode = document.getElementById('write-mode-select').value;
 
             // Create job
+            console.log('[MLCATAI] Creating job with mode:', mode);
             this.ajaxRequest('createJob', {
                 category_ids: categoryIds,
                 language_ids: languageIds,
                 fields: fields,
                 write_mode: writeMode
             }, function (response) {
+                console.log('[MLCATAI] createJob response, mode is:', mode);
                 if (response.success) {
                     self.currentJobId = response.job_id;
 
                     if (mode === 'background') {
                         // Background mode: just show confirmation and reload
+                        console.log('[MLCATAI] Background mode - showing alert');
                         alert('Job #' + response.job_id + ' created!\n\nThe job is now queued for background processing.\nConfigure cron to process automatically, or resume from the Job Queue panel.');
                         location.reload();
                     } else {
                         // Browser mode: start processing immediately
+                        console.log('[MLCATAI] Browser mode - starting processing');
                         self.showProgress();
                         self.log('Job created with ID: ' + response.job_id);
                         self.log('Starting generation...');
