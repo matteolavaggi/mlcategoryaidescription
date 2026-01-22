@@ -60,7 +60,7 @@ When releasing a new version:
 modulename/
 ├── .gitignore          # REQUIRED - security!
 ├── modulename.php      # Main class
-├── config.xml          # Metadata
+├── config.xml          # Metadata (ONLY config.xml - do NOT create config_it.xml or other localized variants)
 ├── classes/            # Business logic
 ├── controllers/        # Admin/Front controllers
 ├── views/templates/    # Smarty TPL
