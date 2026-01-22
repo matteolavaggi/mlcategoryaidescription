@@ -62,12 +62,21 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
      */
     protected function processAjaxRequest()
     {
-        // Clear any output buffers
+        // Disable error display that could corrupt JSON output
+        @ini_set('display_errors', '0');
+        error_reporting(0);
+
+        // Clear any output buffers that might contain HTML/errors
         while (ob_get_level()) {
             ob_end_clean();
         }
 
+        // Start clean output buffer
+        ob_start();
+
+        // Set JSON headers before any output
         header('Content-Type: application/json; charset=utf-8');
+        header('X-Content-Type-Options: nosniff');
 
         $action = Tools::getValue('action');
 
@@ -565,6 +574,16 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
      */
     protected function jsonResponse($data)
     {
+        // Clean any buffered output that could corrupt JSON
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        // Ensure content-type is set
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
         exit;
     }

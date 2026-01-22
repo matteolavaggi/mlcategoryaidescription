@@ -581,13 +581,16 @@
             btn.disabled = true;
 
             this.ajaxRequest('testConnection', {}, function (response) {
+                // Always reset button state first
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
 
-                if (response.success) {
+                // Show result message
+                if (response && response.success) {
                     alert('✓ API connection successful!');
                 } else {
-                    alert('✗ API connection failed:\n\n' + response.message);
+                    var errorMsg = (response && response.message) ? response.message : 'Unknown error';
+                    alert('✗ API connection failed:\n\n' + errorMsg);
                 }
             });
         },
@@ -637,46 +640,54 @@
 
         showCompletionButtons: function () {
             var logDiv = document.getElementById('generation-log');
-            if (logDiv) {
-                // Add completion buttons below the log
-                var buttonsDiv = document.createElement('div');
-                buttonsDiv.style.cssText = 'margin-top: 15px; text-align: center; padding: 15px; background: #dff0d8; border-radius: 4px;';
-                buttonsDiv.innerHTML =
-                    '<strong style="color: #3c763d; font-size: 16px;">✓ Generation Complete!</strong><br><br>' +
-                    '<button type="button" class="btn btn-success btn-lg" id="btn-close-reload" style="margin-right: 10px;">' +
-                    '<i class="icon icon-refresh"></i> Close & Reload Page</button>' +
-                    '<button type="button" class="btn btn-default" id="btn-view-log-after">' +
-                    '<i class="icon icon-file-text-o"></i> View Full Debug Log</button>';
+            if (!logDiv) {
+                return;
+            }
 
-                logDiv.parentNode.appendChild(buttonsDiv);
+            // Prevent duplicate completion messages
+            if (document.getElementById('mlcatai-completion-panel')) {
+                return;
+            }
 
-                // Bind button events
-                var reloadBtn = document.getElementById('btn-close-reload');
-                if (reloadBtn) {
-                    reloadBtn.addEventListener('click', function () {
-                        location.reload();
-                    });
-                }
+            // Add completion buttons below the log
+            var buttonsDiv = document.createElement('div');
+            buttonsDiv.id = 'mlcatai-completion-panel';
+            buttonsDiv.style.cssText = 'margin-top: 15px; text-align: center; padding: 15px; background: #dff0d8; border-radius: 4px;';
+            buttonsDiv.innerHTML =
+                '<strong style="color: #3c763d; font-size: 16px;">✓ Generation Complete!</strong><br><br>' +
+                '<button type="button" class="btn btn-success btn-lg" id="btn-close-reload" style="margin-right: 10px;">' +
+                '<i class="icon icon-refresh"></i> Close & Reload Page</button>' +
+                '<button type="button" class="btn btn-default" id="btn-view-log-after">' +
+                '<i class="icon icon-file-text-o"></i> View Full Debug Log</button>';
 
-                var viewLogBtn = document.getElementById('btn-view-log-after');
-                if (viewLogBtn) {
-                    viewLogBtn.addEventListener('click', function () {
-                        // Scroll to debug log section and open it
-                        var debugLogBtn = document.getElementById('btn-view-debug-log');
-                        if (debugLogBtn) {
-                            debugLogBtn.scrollIntoView({ behavior: 'smooth' });
-                            debugLogBtn.click();
-                        }
-                    });
-                }
+            logDiv.parentNode.appendChild(buttonsDiv);
 
-                // Remove active striped animation from progress bar
-                var progressBar = document.getElementById('generation-progress-bar');
-                if (progressBar) {
-                    progressBar.classList.remove('active');
-                    progressBar.classList.remove('progress-bar-striped');
-                    progressBar.classList.add('progress-bar-success');
-                }
+            // Bind button events
+            var reloadBtn = document.getElementById('btn-close-reload');
+            if (reloadBtn) {
+                reloadBtn.addEventListener('click', function () {
+                    location.reload();
+                });
+            }
+
+            var viewLogBtn = document.getElementById('btn-view-log-after');
+            if (viewLogBtn) {
+                viewLogBtn.addEventListener('click', function () {
+                    // Scroll to debug log section and open it
+                    var debugLogBtn = document.getElementById('btn-view-debug-log');
+                    if (debugLogBtn) {
+                        debugLogBtn.scrollIntoView({ behavior: 'smooth' });
+                        debugLogBtn.click();
+                    }
+                });
+            }
+
+            // Remove active striped animation from progress bar
+            var progressBar = document.getElementById('generation-progress-bar');
+            if (progressBar) {
+                progressBar.classList.remove('active');
+                progressBar.classList.remove('progress-bar-striped');
+                progressBar.classList.add('progress-bar-success');
             }
         },
 
@@ -745,6 +756,10 @@
     document.addEventListener('DOMContentLoaded', function () {
         // Wait for module panel to exist before initializing
         waitForElement('#mlcategoryai-batch-panel', function () {
+            if (window.mlcategoryai_initialized) {
+                return;
+            }
+            window.mlcategoryai_initialized = true;
             console.log('[MLCATAI] Module content found, initializing...');
             MlCategoryAi.init();
         });
@@ -754,8 +769,8 @@
     window.addEventListener('load', function () {
         var panel = document.getElementById('mlcategoryai-batch-panel');
         if (panel && !window.mlcategoryai_initialized) {
-            console.log('[MLCATAI] Initializing on window.load fallback...');
             window.mlcategoryai_initialized = true;
+            console.log('[MLCATAI] Initializing on window.load fallback...');
             MlCategoryAi.init();
         }
     });

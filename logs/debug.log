@@ -208,3 +208,88 @@
 [2026-01-22 15:11:38.470] [DEBUG] API request START - model=gpt-5.2
 [2026-01-22 15:11:38.470] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
 [2026-01-22 15:11:40.239] [DEBUG] API request END - 1770ms - httpCode=200
+[2026-01-22 15:20:42.194] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 15:20:42.194] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 15:20:42.195] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:20:42.196] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:20:42.832] [DEBUG] API request END - 639ms - httpCode=200
+[2026-01-22 15:20:43.770] [DEBUG] API request END - 1577ms - httpCode=200
+[2026-01-22 15:20:51.841] [INFO] processNextBatch START jobId=1
+[2026-01-22 15:20:51.842] [DEBUG] getJob took 1ms
+[2026-01-22 15:20:51.843] [DEBUG] buildItemsList took 0ms - items=4
+[2026-01-22 15:20:51.843] [INFO] processBatch START - items=4 parallel=YES
+[2026-01-22 15:20:51.859] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:20:51.860] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:20:51.861] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:20:54.747] [INFO] processBatch END - took 2904ms - processed=3 failed=0
+[2026-01-22 15:20:54.748] [DEBUG] updateJob took 0ms
+[2026-01-22 15:20:54.749] [INFO] Job #1 COMPLETED
+[2026-01-22 15:28:08.353] [INFO] processNextBatch START jobId=2
+[2026-01-22 15:28:08.353] [INFO] processNextBatch START jobId=3
+[2026-01-22 15:28:08.353] [DEBUG] getJob took 1ms
+[2026-01-22 15:28:08.354] [DEBUG] getJob took 2ms
+[2026-01-22 15:28:08.355] [DEBUG] buildItemsList took 0ms - items=4
+[2026-01-22 15:28:08.355] [DEBUG] buildItemsList took 0ms - items=4
+[2026-01-22 15:28:08.356] [INFO] processBatch START - items=4 parallel=YES
+[2026-01-22 15:28:08.356] [INFO] processBatch START - items=4 parallel=YES
+[2026-01-22 15:28:08.366] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:28:08.367] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:28:08.367] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:28:08.367] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:28:08.368] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:28:08.368] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:28:08.369] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:28:08.370] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:28:17.726] [INFO] processBatch END - took 9370ms - processed=4 failed=0
+[2026-01-22 15:28:17.726] [DEBUG] updateJob took 0ms
+[2026-01-22 15:28:17.727] [INFO] Job #2 COMPLETED
+[2026-01-22 15:28:19.623] [INFO] processBatch END - took 11266ms - processed=4 failed=0
+[2026-01-22 15:28:19.623] [DEBUG] updateJob took 0ms
+[2026-01-22 15:28:19.624] [INFO] Job #3 COMPLETED
+[2026-01-22 15:29:20.974] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 15:29:20.975] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:29:23.788] [DEBUG] API request END - 2814ms - httpCode=200
+[2026-01-22 15:29:23.805] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 15:29:23.805] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:29:24.849] [DEBUG] API request END - 1045ms - httpCode=200
+[2026-01-22 15:30:44.902] [INFO] processNextBatch START jobId=1
+[2026-01-22 15:30:44.902] [DEBUG] getJob took 1ms
+[2026-01-22 15:30:44.904] [DEBUG] buildItemsList took 0ms - items=8
+[2026-01-22 15:30:44.904] [INFO] processBatch START - items=5 parallel=YES
+[2026-01-22 15:30:44.921] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:30:44.921] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:30:44.922] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:30:44.923] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:30:44.924] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:30:55.646] [INFO] processNextBatch START jobId=2
+[2026-01-22 15:30:55.646] [DEBUG] getJob took 1ms
+[2026-01-22 15:30:55.648] [DEBUG] buildItemsList took 0ms - items=8
+[2026-01-22 15:30:55.648] [INFO] processBatch START - items=5 parallel=YES
+[2026-01-22 15:30:55.660] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:30:55.660] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:30:55.661] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:30:55.662] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:30:55.663] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:43:07.808] [INFO] processNextBatch START jobId=3
+[2026-01-22 15:43:07.809] [DEBUG] getJob took 1ms
+[2026-01-22 15:43:07.810] [DEBUG] buildItemsList took 0ms - items=6
+[2026-01-22 15:43:07.810] [INFO] processBatch START - items=5 parallel=YES
+[2026-01-22 15:43:07.819] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:43:07.819] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:43:07.831] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:43:07.832] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:43:07.833] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:43:19.612] [INFO] processBatch END - took 11802ms - processed=5 failed=0
+[2026-01-22 15:43:19.613] [DEBUG] updateJob took 0ms
+[2026-01-22 15:43:20.369] [INFO] processNextBatch START jobId=3
+[2026-01-22 15:43:20.370] [DEBUG] getJob took 1ms
+[2026-01-22 15:43:20.370] [DEBUG] buildItemsList took 0ms - items=6
+[2026-01-22 15:43:20.371] [INFO] processBatch START - items=1 parallel=YES
+[2026-01-22 15:43:20.372] [DEBUG] loadCategory took 1ms - cat=4 (Men)
+[2026-01-22 15:43:20.375] [DEBUG] promptResolve took 2ms - promptLength=376
+[2026-01-22 15:43:20.375] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 15:43:20.376] [DEBUG] Using CA bundle: D:\FTP\local\ps9.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:43:21.821] [DEBUG] API request END - 1445ms - httpCode=200
+[2026-01-22 15:43:21.823] [INFO] processBatch END - took 1452ms - processed=1 failed=0
+[2026-01-22 15:43:21.823] [DEBUG] updateJob took 0ms
+[2026-01-22 15:43:21.824] [INFO] Job #3 COMPLETED

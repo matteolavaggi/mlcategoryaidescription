@@ -48,6 +48,29 @@ class MlCategoryAiGenerator
     protected $idShop;
 
     /**
+     * @var bool|null Cache for meta_keywords column existence check
+     */
+    protected static $hasMetaKeywordsColumn = null;
+
+    /**
+     * Check if meta_keywords column exists in category_lang table
+     * PS9+ removed this column
+     *
+     * @return bool
+     */
+    public static function hasMetaKeywordsSupport()
+    {
+        if (self::$hasMetaKeywordsColumn === null) {
+            $columns = Db::getInstance()->executeS(
+                'SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'category_lang` LIKE \'meta_keywords\''
+            );
+            self::$hasMetaKeywordsColumn = !empty($columns);
+        }
+
+        return self::$hasMetaKeywordsColumn;
+    }
+
+    /**
      * Constructor
      *
      * @param Module $module
@@ -409,6 +432,13 @@ class MlCategoryAiGenerator
      */
     protected function updateCategoryField($category, $fieldType, $content, $idLang)
     {
+        // Check if meta_keywords is supported (PS9+ removed it)
+        if ($fieldType === Mlcategoryaidescription::FIELD_META_KEYWORDS && !self::hasMetaKeywordsSupport()) {
+            MlCategoryAiLogger::debug('meta_keywords not supported in this PS version, skipping');
+
+            return true; // Return true to not count as failure
+        }
+
         $fieldMap = [
             Mlcategoryaidescription::FIELD_DESCRIPTION => 'description',
             Mlcategoryaidescription::FIELD_META_TITLE => 'meta_title',

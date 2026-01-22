@@ -160,12 +160,14 @@
 							{l s='Meta Description' mod='mlcategoryaidescription'}
 						</label>
 					</div>
+					{if isset($has_meta_keywords) && $has_meta_keywords}
 					<div class="checkbox">
 						<label>
 							<input type="checkbox" name="fields[]" value="meta_keywords" class="field-checkbox">
 							{l s='Meta Keywords' mod='mlcategoryaidescription'}
 						</label>
 					</div>
+					{/if}
 					<div class="checkbox">
 						<label>
 							<input type="checkbox" name="fields[]" value="link_rewrite" class="field-checkbox">
@@ -238,7 +240,9 @@
 			<tr><td><code>{literal}{category_description}{/literal}</code></td><td>{l s='Current category description' mod='mlcategoryaidescription'}</td><td>Browse our collection...</td></tr>
 			<tr><td><code>{literal}{category_meta_title}{/literal}</code></td><td>{l s='Current meta title' mod='mlcategoryaidescription'}</td><td>Men's Shoes - MyShop</td></tr>
 			<tr><td><code>{literal}{category_meta_description}{/literal}</code></td><td>{l s='Current meta description' mod='mlcategoryaidescription'}</td><td>Shop the best...</td></tr>
+			{if isset($has_meta_keywords) && $has_meta_keywords}
 			<tr><td><code>{literal}{category_meta_keywords}{/literal}</code></td><td>{l s='Current meta keywords' mod='mlcategoryaidescription'}</td><td>shoes, mens, footwear</td></tr>
+			{/if}
 			<tr><td><code>{literal}{category_link_rewrite}{/literal}</code></td><td>{l s='Current friendly URL slug' mod='mlcategoryaidescription'}</td><td>mens-shoes</td></tr>
 			<tr><td><code>{literal}{parent_category_name}{/literal}</code></td><td>{l s='Parent category name' mod='mlcategoryaidescription'}</td><td>Footwear</td></tr>
 			<tr><td><code>{literal}{site_name}{/literal}</code></td><td>{l s='Shop name' mod='mlcategoryaidescription'}</td><td>MyShop</td></tr>

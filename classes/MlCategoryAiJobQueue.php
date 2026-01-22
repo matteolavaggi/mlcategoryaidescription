@@ -344,10 +344,23 @@ class MlCategoryAiJobQueue
     {
         $parallelEnabled = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, null, null, null, true);
 
-        // Calculate execution time from job timestamps
-        $startedAt = strtotime($job['started_at']);
+        // Calculate execution time from job timestamps with validation
+        $startedAt = !empty($job['started_at']) ? strtotime($job['started_at']) : 0;
         $completedAt = time();
-        $executionTimeMs = ($completedAt - $startedAt) * 1000;
+
+        // Validate timestamps and calculate execution time safely
+        if ($startedAt > 0 && $startedAt <= $completedAt) {
+            $executionTimeMs = ($completedAt - $startedAt) * 1000;
+        } else {
+            // Fallback: use the batch time if timestamps are invalid
+            $executionTimeMs = isset($lastBatchResult['time_ms']) ? (int) $lastBatchResult['time_ms'] : 0;
+        }
+
+        // Ensure execution time is within reasonable bounds (max 24 hours = 86,400,000 ms)
+        $maxExecutionMs = 86400000;
+        if ($executionTimeMs < 0 || $executionTimeMs > $maxExecutionMs) {
+            $executionTimeMs = isset($lastBatchResult['time_ms']) ? (int) $lastBatchResult['time_ms'] : 0;
+        }
 
         // Insert directly to have accurate timing
         Db::getInstance()->insert('mlcategoryai_run_stats', [

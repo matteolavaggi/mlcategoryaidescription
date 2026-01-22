@@ -780,6 +780,7 @@ Requisiti:
             'pending_jobs' => $this->getAllPendingJobs(),
             'run_stats' => MlCategoryAiRunStats::getRecentRuns(10),
             'run_stats_aggregate' => MlCategoryAiRunStats::getAggregateStats(),
+            'has_meta_keywords' => MlCategoryAiGenerator::hasMetaKeywordsSupport(),
         ]);
 
         // Add header info panel FIRST
@@ -1190,9 +1191,21 @@ Requisiti:
             self::FIELD_DESCRIPTION => $this->l('Description'),
             self::FIELD_META_TITLE => $this->l('Meta Title'),
             self::FIELD_META_DESCRIPTION => $this->l('Meta Description'),
-            self::FIELD_META_KEYWORDS => $this->l('Meta Keywords'),
             self::FIELD_LINK_REWRITE => $this->l('Friendly URL'),
         ];
+
+        // Add meta_keywords only if supported (PS < 9.0)
+        if (MlCategoryAiGenerator::hasMetaKeywordsSupport()) {
+            // Insert after meta_description for proper ordering
+            $newFieldTypes = [];
+            foreach ($fieldTypes as $key => $value) {
+                $newFieldTypes[$key] = $value;
+                if ($key === self::FIELD_META_DESCRIPTION) {
+                    $newFieldTypes[self::FIELD_META_KEYWORDS] = $this->l('Meta Keywords');
+                }
+            }
+            $fieldTypes = $newFieldTypes;
+        }
 
         // Load current prompts from database
         $prompts = $this->loadPromptTemplates();
