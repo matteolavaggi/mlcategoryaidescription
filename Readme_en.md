@@ -172,9 +172,12 @@ https://yourshop.com/module/mlcategoryaidescription/cron?token=abc123...
 
 ### Step 3: Generate Content
 
-1. **Select Categories**: Choose which categories to process
-   - Use "Select All" for entire catalog
-   - Or select specific categories from the tree
+1. **Select Categories**: Use the interactive category tree
+   - 🔍 **Search**: Type in the search box to filter categories instantly
+   - ☑️ **Select All / Deselect All**: Quick buttons to check/uncheck all categories
+   - ➕ **Expand All / Collapse All**: Show or hide the full tree structure
+   - 🌳 **Select Subcategories**: Click the tree icon (📊) next to any parent category to select/deselect all its children at once
+   - Alternating row colors make it easy to scan large catalogs
 
 2. **Select Languages**: Choose target languages
    - Select all languages for multilingual content

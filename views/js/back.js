@@ -216,8 +216,24 @@
                 }, this);
             });
 
-            // Initialize category count
+            // Initialize category count and row colors
             this.updateCategoryCount();
+            this.applyAlternatingRowColors();
+        },
+
+        applyAlternatingRowColors: function () {
+            // Apply alternating row colors to ALL visible rows (regardless of hierarchy)
+            var items = document.querySelectorAll('.mlcatai-tree-item');
+            var visibleIndex = 0;
+            items.forEach(function (item) {
+                var node = item.closest('.mlcatai-tree-node');
+                // Only count visible items
+                if (!node.classList.contains('search-hidden')) {
+                    item.classList.remove('row-odd', 'row-even');
+                    item.classList.add(visibleIndex % 2 === 0 ? 'row-even' : 'row-odd');
+                    visibleIndex++;
+                }
+            });
         },
 
         updateCategoryCount: function () {
@@ -242,6 +258,7 @@
                 nodes.forEach(function (node) {
                     node.classList.remove('search-hidden');
                 });
+                this.applyAlternatingRowColors();
                 return;
             }
 
@@ -286,6 +303,9 @@
                     }
                 }
             });
+
+            // Re-apply alternating colors after filtering
+            this.applyAlternatingRowColors();
         },
 
         checkExistingJob: function () {
