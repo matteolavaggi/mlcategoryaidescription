@@ -58,6 +58,7 @@ When releasing a new version:
 ## Module Structure
 ```
 modulename/
+├── .gitignore          # REQUIRED - security!
 ├── modulename.php      # Main class
 ├── config.xml          # Metadata
 ├── classes/            # Business logic
@@ -70,6 +71,31 @@ modulename/
     ├── tools/          # Build tools (index.sh, zip.sh)
     └── instructions/   # Coding standards
 ```
+
+## ⚠️ Security: .gitignore Required
+
+**CRITICAL**: Every repo MUST have a `.gitignore` that excludes sensitive files!
+
+### Required .gitignore Entries
+```gitignore
+# NEVER commit these!
+.env
+.env.*
+*.secret
+*.key
+*.pem
+```
+
+### Before First Commit
+1. Check if `.gitignore` exists
+2. If not, create it with security entries
+3. Verify no `.env` or credential files are staged
+
+### If Sensitive Data Was Committed
+1. Remove from git: `git rm --cached .env`
+2. Add to .gitignore
+3. Amend or force push to remove from history
+4. **REVOKE exposed credentials immediately!**
 
 ## Build Tools
 

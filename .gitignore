@@ -1,1 +1,64 @@
+# =============================================================================
+# PrestaShop Module .gitignore
+# SECURITY: Never commit sensitive data!
+# =============================================================================
+
+# ================================
+# SENSITIVE FILES (NEVER COMMIT!)
+# ================================
 .env
+.env.*
+*.env
+.env.local
+.env.*.local
+*.secret
+*.key
+*.pem
+**/secrets/
+**/credentials/
+
+# API keys that might be in config files
+config.local.php
+local.config.php
+
+# ================================
+# IDE & Editor
+# ================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# ================================
+# OS Generated
+# ================================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ================================
+# Dependencies
+# ================================
+node_modules/
+vendor/
+composer.lock
+
+# ================================
+# Build & Cache
+# ================================
+*.log
+logs/*.log
+cache/
+tmp/
+*.cache
+
+# ================================
+# Development Files (not for production ZIP)
+# ================================
+# These are excluded by zip.sh but also ignore in git for cleanliness
+# PROJECT.md
+# README_DEV.md
