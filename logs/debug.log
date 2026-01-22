@@ -132,3 +132,70 @@
 [2026-01-22 09:30:41.690] [INFO] processBatch END - took 3794ms - processed=2 failed=0
 [2026-01-22 09:30:41.690] [DEBUG] updateJob took 0ms
 [2026-01-22 09:30:41.691] [INFO] Job #14 COMPLETED
+[2026-01-22 09:36:39.775] [INFO] processNextBatch START jobId=15
+[2026-01-22 09:36:39.775] [DEBUG] getJob took 1ms
+[2026-01-22 09:36:39.786] [DEBUG] buildItemsList took 0ms - items=12
+[2026-01-22 09:36:39.786] [INFO] processBatch START - items=5 parallel=NO
+[2026-01-22 09:36:39.789] [DEBUG] loadCategory took 2ms - cat=4 (Men)
+[2026-01-22 09:36:39.790] [DEBUG] promptResolve took 1ms - promptLength=391
+[2026-01-22 09:36:39.791] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:36:48.045] [DEBUG] API request END - 8254ms - httpCode=200
+[2026-01-22 09:36:48.057] [DEBUG] loadCategory took 0ms - cat=4 (Men)
+[2026-01-22 09:36:48.058] [DEBUG] promptResolve took 1ms - promptLength=279
+[2026-01-22 09:36:48.059] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:36:48.992] [DEBUG] API request END - 933ms - httpCode=200
+[2026-01-22 09:36:48.994] [DEBUG] loadCategory took 0ms - cat=4 (Men)
+[2026-01-22 09:36:48.995] [DEBUG] promptResolve took 1ms - promptLength=305
+[2026-01-22 09:36:48.995] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:36:50.136] [DEBUG] API request END - 1140ms - httpCode=200
+[2026-01-22 09:36:50.138] [DEBUG] loadCategory took 0ms - cat=4 (Men)
+[2026-01-22 09:36:50.139] [DEBUG] promptResolve took 1ms - promptLength=333
+[2026-01-22 09:36:50.139] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:36:51.747] [DEBUG] API request END - 1608ms - httpCode=200
+[2026-01-22 09:36:51.750] [DEBUG] loadCategory took 1ms - cat=4 (Hommes)
+[2026-01-22 09:36:51.752] [DEBUG] promptResolve took 2ms - promptLength=466
+[2026-01-22 09:36:51.753] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:37:01.263] [DEBUG] API request END - 9510ms - httpCode=200
+[2026-01-22 09:37:01.274] [INFO] processBatch END - took 21488ms - processed=5 failed=0
+[2026-01-22 09:37:01.275] [DEBUG] updateJob took 0ms
+[2026-01-22 09:37:01.386] [INFO] processNextBatch START jobId=15
+[2026-01-22 09:37:01.387] [DEBUG] getJob took 1ms
+[2026-01-22 09:37:01.387] [DEBUG] buildItemsList took 0ms - items=12
+[2026-01-22 09:37:01.388] [INFO] processBatch START - items=5 parallel=NO
+[2026-01-22 09:37:01.388] [DEBUG] loadCategory took 0ms - cat=4 (Hommes)
+[2026-01-22 09:37:01.390] [DEBUG] promptResolve took 1ms - promptLength=346
+[2026-01-22 09:37:01.390] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:37:02.473] [DEBUG] API request END - 1083ms - httpCode=200
+[2026-01-22 09:37:02.475] [DEBUG] loadCategory took 0ms - cat=4 (Hommes)
+[2026-01-22 09:37:02.476] [DEBUG] promptResolve took 1ms - promptLength=361
+[2026-01-22 09:37:02.477] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:37:03.567] [DEBUG] API request END - 1090ms - httpCode=200
+[2026-01-22 09:37:03.569] [DEBUG] loadCategory took 0ms - cat=4 (Hommes)
+[2026-01-22 09:37:03.570] [DEBUG] promptResolve took 1ms - promptLength=421
+[2026-01-22 09:37:03.570] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:37:05.276] [DEBUG] API request END - 1706ms - httpCode=200
+[2026-01-22 09:37:05.279] [DEBUG] loadCategory took 1ms - cat=4 (Men)
+[2026-01-22 09:37:05.280] [DEBUG] promptResolve took 1ms - promptLength=428
+[2026-01-22 09:37:05.280] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:37:12.740] [DEBUG] API request END - 7460ms - httpCode=200
+[2026-01-22 09:37:12.743] [DEBUG] loadCategory took 0ms - cat=4 (Men)
+[2026-01-22 09:37:12.744] [DEBUG] promptResolve took 0ms - promptLength=332
+[2026-01-22 09:37:12.744] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:37:13.692] [DEBUG] API request END - 948ms - httpCode=200
+[2026-01-22 09:37:13.694] [INFO] processBatch END - took 12306ms - processed=5 failed=0
+[2026-01-22 09:37:13.695] [DEBUG] updateJob took 0ms
+[2026-01-22 09:37:13.809] [INFO] processNextBatch START jobId=15
+[2026-01-22 09:37:13.810] [DEBUG] getJob took 1ms
+[2026-01-22 09:37:13.811] [DEBUG] buildItemsList took 0ms - items=12
+[2026-01-22 09:37:13.811] [INFO] processBatch START - items=2 parallel=NO
+[2026-01-22 09:37:13.812] [DEBUG] loadCategory took 0ms - cat=4 (Men)
+[2026-01-22 09:37:13.813] [DEBUG] promptResolve took 1ms - promptLength=342
+[2026-01-22 09:37:13.814] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:37:17.562] [DEBUG] API request END - 3749ms - httpCode=200
+[2026-01-22 09:37:17.575] [DEBUG] loadCategory took 0ms - cat=4 (Men)
+[2026-01-22 09:37:17.576] [DEBUG] promptResolve took 1ms - promptLength=402
+[2026-01-22 09:37:17.576] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 09:37:19.304] [DEBUG] API request END - 1728ms - httpCode=200
+[2026-01-22 09:37:19.307] [INFO] processBatch END - took 5496ms - processed=2 failed=0
+[2026-01-22 09:37:19.307] [DEBUG] updateJob took 0ms
+[2026-01-22 09:37:19.308] [INFO] Job #15 COMPLETED

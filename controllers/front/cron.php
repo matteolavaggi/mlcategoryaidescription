@@ -147,5 +147,8 @@ class MlcategoryaidescriptionCronModuleFrontController extends ModuleFrontContro
         echo 'Items processed this run: ' . $totalProcessed . "\n";
         echo 'Failures this run: ' . $totalFailed . "\n";
         echo 'Execution time: ' . (time() - $startTime) . " seconds\n";
+
+        // Exit to prevent Smarty template rendering
+        exit;
     }
 }
