@@ -205,3 +205,6 @@
 [2026-01-22 15:07:17.373] [ERROR] cURL error: SSL certificate problem: unable to get local issuer certificate
 [2026-01-22 15:07:17.397] [DEBUG] API request END - 70ms - httpCode=0
 [2026-01-22 15:07:17.397] [ERROR] cURL error: SSL certificate problem: unable to get local issuer certificate
+[2026-01-22 15:11:38.470] [DEBUG] API request START - model=gpt-5.2
+[2026-01-22 15:11:38.470] [DEBUG] Using CA bundle: D:\FTP\local\ps17.local/modules/mlcategoryaidescription/ca-bundle.crt
+[2026-01-22 15:11:40.239] [DEBUG] API request END - 1770ms - httpCode=200

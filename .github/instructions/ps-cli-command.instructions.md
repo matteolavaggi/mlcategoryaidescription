@@ -24,26 +24,28 @@ alwaysApply: true
 
 ### Step 1: Provide PowerShell Admin Commands
 
-First, output PowerShell commands for symlink creation that require Administrator privileges:
+Output a **single-line, hardcoded** PowerShell command for symlink creation.
 
+**Rules for generating the command:**
+- ONE LINE only (use `;` to chain commands)
+- NO VARIABLES - use hardcoded paths
+- Replace `{PS_TARGET}` with actual target path (ps8.local, ps9.local, ps17.local)
+
+**Template:**
 ```powershell
-# === RUN IN POWERSHELL AS ADMINISTRATOR ===
-$MODULE_NAME = "mlcategoryaidescription"
-$DEV_PATH = "C:\Users\Pineapple\Documents\Visual Studio Code\dev.prestashop\modules\mlcategoryaidescription"
-$PS_ROOT = "D:\FTP\local\ps9.local"  # Change to target PS version
+Remove-Item -LiteralPath "D:\FTP\local\{PS_TARGET}\modules\mlcategoryaidescription" -Force -Recurse -ErrorAction SilentlyContinue; New-Item -ItemType SymbolicLink -Path "D:\FTP\local\{PS_TARGET}\modules\mlcategoryaidescription" -Target "C:\Users\Pineapple\Documents\Visual Studio Code\dev.prestashop\modules\mlcategoryaidescription"
+```
 
-# Remove existing symlink/folder
-Remove-Item -LiteralPath "$PS_ROOT\modules\$MODULE_NAME" -Force -Recurse -ErrorAction SilentlyContinue
-
-# Create symlink
-New-Item -ItemType SymbolicLink -Path "$PS_ROOT\modules\$MODULE_NAME" -Target $DEV_PATH
+**Example for PS9:**
+```powershell
+Remove-Item -LiteralPath "D:\FTP\local\ps9.local\modules\mlcategoryaidescription" -Force -Recurse -ErrorAction SilentlyContinue; New-Item -ItemType SymbolicLink -Path "D:\FTP\local\ps9.local\modules\mlcategoryaidescription" -Target "C:\Users\Pineapple\Documents\Visual Studio Code\dev.prestashop\modules\mlcategoryaidescription"
 ```
 
 Then ask: **"Symlink command ready. Run it in PowerShell as Administrator, then confirm when done."**
 
 ### Step 2: After Confirmation, Run Install via WSL/Git Bash
 
-Once user confirms symlink is created, execute the install command:
+Once user confirms symlink is created, **execute** (not just show) the install command in terminal:
 
 ```bash
 # For PS9
