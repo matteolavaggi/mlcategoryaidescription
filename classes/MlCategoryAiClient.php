@@ -345,6 +345,85 @@ class MlCategoryAiClient
     }
 
     /**
+     * Generate content with guaranteed JSON response format
+     * Uses OpenAI's response_format parameter for reliable JSON output
+     *
+     * @param string $prompt The prompt to send
+     * @param string $systemMessage Optional system message
+     *
+     * @return array|false Parsed JSON array or false on error
+     */
+    public function generateJson($prompt, $systemMessage = '')
+    {
+        $this->lastError = '';
+        $this->lastTokensUsed = 0;
+        $this->lastInputTokens = 0;
+        $this->lastOutputTokens = 0;
+        $this->lastRequestTimeMs = 0;
+
+        if (empty($this->apiKey)) {
+            $this->lastError = 'API key is not configured';
+
+            return false;
+        }
+
+        if (empty($systemMessage)) {
+            $systemMessage = 'You are an SEO expert. Generate content as requested. Always respond with valid JSON.';
+        }
+
+        $messages = [
+            [
+                'role' => 'system',
+                'content' => $systemMessage,
+            ],
+            [
+                'role' => 'user',
+                'content' => $prompt,
+            ],
+        ];
+
+        $requestData = [
+            'model' => $this->model,
+            'messages' => $messages,
+            'response_format' => ['type' => 'json_object'],
+        ];
+
+        // Add temperature (mini/nano models only support 1.0)
+        if (!$this->requiresFixedTemperature()) {
+            $requestData['temperature'] = $this->temperature;
+        }
+
+        // Add token limit with correct parameter name for model
+        if ($this->maxTokens > 0) {
+            $tokenParam = $this->getTokenLimitParamName();
+            $requestData[$tokenParam] = $this->maxTokens;
+        }
+
+        $url = $this->buildUrl();
+        $response = $this->sendRequest($url, $requestData);
+
+        if ($response === false) {
+            return false;
+        }
+
+        $content = $this->parseResponse($response);
+        if ($content === false) {
+            return false;
+        }
+
+        // Parse JSON (guaranteed valid by response_format)
+        $data = json_decode($content, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->lastError = 'JSON parse error: ' . json_last_error_msg();
+            MlCategoryAiLogger::error($this->lastError, ['content' => substr($content, 0, 500)]);
+
+            return false;
+        }
+
+        return $data;
+    }
+
+    /**
      * Build API URL based on provider
      *
      * @return string
