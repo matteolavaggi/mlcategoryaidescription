@@ -62,15 +62,33 @@ class MlCategoryAiJobQueue
      * @param array $languageIds
      * @param array $fieldsToGenerate
      * @param string $writeMode
+     * @param array $gtOptions Google Translate options (optional)
      *
      * @return int|false Job ID or false on failure
      */
-    public function createJob($categoryIds, $languageIds, $fieldsToGenerate, $writeMode = 'fill_missing')
+    public function createJob($categoryIds, $languageIds, $fieldsToGenerate, $writeMode = 'fill_missing', $gtOptions = [])
     {
-        // Calculate total items: categories × languages × fields
-        $totalItems = count($categoryIds) * count($languageIds) * count($fieldsToGenerate);
+        $useGoogleTranslate = !empty($gtOptions['use_google_translate']);
+        $primaryLanguageId = isset($gtOptions['primary_language_id']) ? (int) $gtOptions['primary_language_id'] : null;
+        $translateLanguageIds = isset($gtOptions['translate_language_ids']) ? $gtOptions['translate_language_ids'] : [];
 
-        $result = Db::getInstance()->insert('mlcategoryai_job_queue', [
+        // Calculate total items based on processing mode
+        if ($useGoogleTranslate && $primaryLanguageId) {
+            // Phase 1: categories × 1 language × fields (OpenAI)
+            $openAiItems = count($categoryIds) * 1 * count($fieldsToGenerate);
+            // Phase 2: categories × target languages × fields (Google Translate)
+            // Note: link_rewrite is generated locally, not via GT API
+            $fieldsForTranslate = array_filter($fieldsToGenerate, function ($field) {
+                return $field !== Mlcategoryaidescription::FIELD_LINK_REWRITE;
+            });
+            $gtItems = count($categoryIds) * count($translateLanguageIds) * count($fieldsForTranslate);
+            $totalItems = $openAiItems + $gtItems;
+        } else {
+            // Original flow: categories × languages × fields
+            $totalItems = count($categoryIds) * count($languageIds) * count($fieldsToGenerate);
+        }
+
+        $jobData = [
             'id_shop' => (int) $this->idShop,
             'job_type' => 'batch_generation',
             'status' => self::STATUS_PENDING,
@@ -81,6 +99,12 @@ class MlCategoryAiJobQueue
             'language_ids' => pSQL(json_encode(array_map('intval', $languageIds))),
             'fields_to_generate' => pSQL(json_encode($fieldsToGenerate)),
             'write_mode' => pSQL($writeMode),
+            'use_google_translate' => $useGoogleTranslate ? 1 : 0,
+            'primary_language_id' => $primaryLanguageId,
+            'translate_language_ids' => !empty($translateLanguageIds) ? pSQL(json_encode(array_map('intval', $translateLanguageIds))) : null,
+            'phase' => 'openai',
+            'current_translate_lang_index' => 0,
+            'current_translate_position' => 0,
             'current_position' => 0,
             'last_processed_category_id' => null,
             'last_processed_lang_id' => null,
@@ -89,7 +113,9 @@ class MlCategoryAiJobQueue
             'completed_at' => null,
             'updated_at' => date('Y-m-d H:i:s'),
             'error_log' => null,
-        ]);
+        ];
+
+        $result = Db::getInstance()->insert('mlcategoryai_job_queue', $jobData);
 
         if (!$result) {
             return false;
@@ -117,6 +143,11 @@ class MlCategoryAiJobQueue
             $result['category_ids'] = json_decode($result['category_ids'], true) ?: [];
             $result['language_ids'] = json_decode($result['language_ids'], true) ?: [];
             $result['fields_to_generate'] = json_decode($result['fields_to_generate'], true) ?: [];
+            // Google Translate fields
+            $result['use_google_translate'] = !empty($result['use_google_translate']);
+            $result['translate_language_ids'] = !empty($result['translate_language_ids'])
+                ? (json_decode($result['translate_language_ids'], true) ?: [])
+                : [];
         }
 
         return $result ?: null;
@@ -141,6 +172,11 @@ class MlCategoryAiJobQueue
             $result['category_ids'] = json_decode($result['category_ids'], true);
             $result['language_ids'] = json_decode($result['language_ids'], true);
             $result['fields_to_generate'] = json_decode($result['fields_to_generate'], true);
+            // Google Translate fields
+            $result['use_google_translate'] = !empty($result['use_google_translate']);
+            $result['translate_language_ids'] = !empty($result['translate_language_ids'])
+                ? (json_decode($result['translate_language_ids'], true) ?: [])
+                : [];
         }
 
         return $result ?: null;
@@ -165,6 +201,11 @@ class MlCategoryAiJobQueue
                 $result['category_ids'] = json_decode($result['category_ids'], true);
                 $result['language_ids'] = json_decode($result['language_ids'], true);
                 $result['fields_to_generate'] = json_decode($result['fields_to_generate'], true);
+                // Google Translate fields
+                $result['use_google_translate'] = !empty($result['use_google_translate']);
+                $result['translate_language_ids'] = !empty($result['translate_language_ids'])
+                    ? (json_decode($result['translate_language_ids'], true) ?: [])
+                    : [];
             }
         }
 
@@ -275,10 +316,20 @@ class MlCategoryAiJobQueue
         // Check if parallel processing is enabled (default: yes)
         $useParallel = (bool) Configuration::get(Mlcategoryaidescription::CONFIG_PARALLEL_REQUESTS, null, null, null, true);
 
-        $t3 = microtime(true);
-        MlCategoryAiLogger::info('processBatch START - items=' . count($batchItems) . ' parallel=' . ($useParallel ? 'YES' : 'NO'));
+        // Check if all items are OpenAI source (parallel only works for OpenAI)
+        $allOpenAi = true;
+        foreach ($batchItems as $item) {
+            $source = isset($item['source']) ? $item['source'] : 'openai';
+            if ($source !== 'openai') {
+                $allOpenAi = false;
+                break;
+            }
+        }
 
-        if ($useParallel && count($batchItems) > 1) {
+        $t3 = microtime(true);
+        MlCategoryAiLogger::info('processBatch START - items=' . count($batchItems) . ' parallel=' . ($useParallel && $allOpenAi ? 'YES' : 'NO'));
+
+        if ($useParallel && count($batchItems) > 1 && $allOpenAi) {
             $batchResult = $this->processParallelBatch($batchItems, $module, $job);
         } else {
             $batchResult = $this->processSequentialBatch($batchItems, $module, $job, $idJob);
@@ -308,14 +359,45 @@ class MlCategoryAiJobQueue
 
         // Check if completed
         $isCompleted = ($newPosition >= count($items));
+
+        // Handle Google Translate phase transitions
+        if ($isCompleted && !empty($job['use_google_translate'])) {
+            $currentPhase = isset($job['phase']) ? $job['phase'] : 'openai';
+
+            if ($currentPhase === 'openai' && !empty($job['translate_language_ids'])) {
+                // Transition from OpenAI phase to Translate phase
+                MlCategoryAiLogger::info('Job #' . $idJob . ' transitioning from OpenAI phase to Translate phase');
+
+                $this->updateJob($idJob, [
+                    'phase' => 'translate',
+                    'current_position' => 0,  // Reset position for new phase
+                    'current_translate_lang_index' => 0,
+                    'current_translate_position' => 0,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+
+                // Not fully completed yet - need to do translate phase
+                $isCompleted = false;
+            } elseif ($currentPhase === 'translate') {
+                // Translate phase complete - job is done
+                MlCategoryAiLogger::info('Job #' . $idJob . ' Translate phase COMPLETED');
+            }
+        }
+
         if ($isCompleted) {
             $this->updateJobStatus($idJob, self::STATUS_COMPLETED);
-            $this->updateJob($idJob, ['completed_at' => date('Y-m-d H:i:s')]);
+            $this->updateJob($idJob, [
+                'phase' => 'completed',
+                'completed_at' => date('Y-m-d H:i:s'),
+            ]);
             MlCategoryAiLogger::info('Job #' . $idJob . ' COMPLETED');
 
             // Log final run stats
             $this->logCompletedJobStats($job, $batchResult);
         }
+
+        // Calculate progress percent considering two phases for GT mode
+        $progressPercent = $this->calculateProgressPercent($job, $newPosition, count($items));
 
         return [
             'success' => true,
@@ -326,12 +408,45 @@ class MlCategoryAiJobQueue
             'total' => $job['total_items'],
             'current_position' => $newPosition,
             'batch_results' => $batchResult['results'],
-            'progress_percent' => round(($newPosition / count($items)) * 100, 1),
+            'progress_percent' => $progressPercent,
             'tokens_input' => $batchResult['tokens_input'],
             'tokens_output' => $batchResult['tokens_output'],
             'batch_time_ms' => $batchResult['time_ms'],
             'parallel' => $useParallel && count($batchItems) > 1,
+            'phase' => isset($job['phase']) ? $job['phase'] : 'openai',
         ];
+    }
+
+    /**
+     * Calculate progress percentage, considering GT two-phase processing
+     *
+     * @param array $job Job data
+     * @param int $currentPosition Current position in items list
+     * @param int $totalItems Total items in current phase
+     *
+     * @return float Progress percentage
+     */
+    protected function calculateProgressPercent($job, $currentPosition, $totalItems)
+    {
+        if (!$job['use_google_translate']) {
+            // Simple calculation for non-GT jobs
+            return $totalItems > 0 ? round(($currentPosition / $totalItems) * 100, 1) : 0;
+        }
+
+        $phase = isset($job['phase']) ? $job['phase'] : 'openai';
+
+        // Two-phase calculation: OpenAI = 60%, Translate = 40%
+        if ($phase === 'openai') {
+            $phaseProgress = $totalItems > 0 ? ($currentPosition / $totalItems) : 0;
+
+            return round($phaseProgress * 60, 1);
+        } elseif ($phase === 'translate') {
+            $phaseProgress = $totalItems > 0 ? ($currentPosition / $totalItems) : 0;
+
+            return round(60 + ($phaseProgress * 40), 1);
+        }
+
+        return 100;  // completed
     }
 
     /**
@@ -394,6 +509,12 @@ class MlCategoryAiJobQueue
     {
         $items = [];
 
+        // Check if using Google Translate two-phase processing
+        if (!empty($job['use_google_translate']) && !empty($job['primary_language_id'])) {
+            return $this->buildItemsListGoogleTranslate($job);
+        }
+
+        // Original flow: all categories × all languages × all fields
         foreach ($job['category_ids'] as $idCategory) {
             foreach ($job['language_ids'] as $idLang) {
                 foreach ($job['fields_to_generate'] as $fieldType) {
@@ -401,7 +522,82 @@ class MlCategoryAiJobQueue
                         'id_category' => (int) $idCategory,
                         'id_lang' => (int) $idLang,
                         'field_type' => $fieldType,
+                        'source' => 'openai',
                     ];
+                }
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Build items list for Google Translate two-phase processing
+     *
+     * Phase 1 (openai): Generate all fields for primary language only
+     * Phase 2 (translate): Translate to all target languages
+     *
+     * @param array $job
+     *
+     * @return array
+     */
+    protected function buildItemsListGoogleTranslate($job)
+    {
+        $items = [];
+        $primaryLangId = (int) $job['primary_language_id'];
+        $translateLangIds = $job['translate_language_ids'] ?: [];
+        $phase = isset($job['phase']) ? $job['phase'] : 'openai';
+
+        // Enforce field order: meta_title before link_rewrite
+        $fieldOrder = [
+            Mlcategoryaidescription::FIELD_DESCRIPTION,
+            Mlcategoryaidescription::FIELD_META_TITLE,
+            Mlcategoryaidescription::FIELD_META_DESCRIPTION,
+            Mlcategoryaidescription::FIELD_META_KEYWORDS,
+            Mlcategoryaidescription::FIELD_LINK_REWRITE,
+        ];
+        $sortedFields = array_values(array_intersect($fieldOrder, $job['fields_to_generate']));
+
+        if ($phase === 'openai') {
+            // Phase 1: OpenAI generation for primary language only
+            foreach ($job['category_ids'] as $idCategory) {
+                foreach ($sortedFields as $fieldType) {
+                    $items[] = [
+                        'id_category' => (int) $idCategory,
+                        'id_lang' => $primaryLangId,
+                        'field_type' => $fieldType,
+                        'source' => 'openai',
+                    ];
+                }
+            }
+        } elseif ($phase === 'translate') {
+            // Phase 2: Google Translate for target languages
+            // Skip link_rewrite - it's generated locally from meta_title
+            $fieldsForTranslate = array_filter($sortedFields, function ($field) {
+                return $field !== Mlcategoryaidescription::FIELD_LINK_REWRITE;
+            });
+
+            foreach ($translateLangIds as $targetLangId) {
+                foreach ($job['category_ids'] as $idCategory) {
+                    foreach ($fieldsForTranslate as $fieldType) {
+                        $items[] = [
+                            'id_category' => (int) $idCategory,
+                            'id_lang' => (int) $targetLangId,
+                            'field_type' => $fieldType,
+                            'source' => 'google_translate',
+                            'source_lang_id' => $primaryLangId,
+                        ];
+                    }
+                    // Add link_rewrite generation (local, from translated meta_title)
+                    if (in_array(Mlcategoryaidescription::FIELD_LINK_REWRITE, $sortedFields)) {
+                        $items[] = [
+                            'id_category' => (int) $idCategory,
+                            'id_lang' => (int) $targetLangId,
+                            'field_type' => Mlcategoryaidescription::FIELD_LINK_REWRITE,
+                            'source' => 'local_from_meta_title',
+                            'source_lang_id' => $primaryLangId,
+                        ];
+                    }
                 }
             }
         }
@@ -790,12 +986,33 @@ class MlCategoryAiJobQueue
 
         foreach ($batchItems as $index => $item) {
             try {
-                $result = $generator->generateField(
-                    (int) $item['id_category'],
-                    (int) $item['id_lang'],
-                    (string) $item['field_type'],
-                    $job['write_mode']
-                );
+                $source = isset($item['source']) ? $item['source'] : 'openai';
+
+                if ($source === 'google_translate') {
+                    // Google Translate: translate from primary language
+                    $result = $generator->translateField(
+                        (int) $item['id_category'],
+                        (int) $item['id_lang'],
+                        (string) $item['field_type'],
+                        (int) $item['source_lang_id'],
+                        $job['write_mode']
+                    );
+                } elseif ($source === 'local_from_meta_title') {
+                    // Local generation: create link_rewrite from translated meta_title
+                    $result = $generator->generateLinkRewriteFromMetaTitle(
+                        (int) $item['id_category'],
+                        (int) $item['id_lang'],
+                        $job['write_mode']
+                    );
+                } else {
+                    // OpenAI generation (original flow)
+                    $result = $generator->generateField(
+                        (int) $item['id_category'],
+                        (int) $item['id_lang'],
+                        (string) $item['field_type'],
+                        $job['write_mode']
+                    );
+                }
             } catch (Exception $e) {
                 $result = [
                     'success' => false,
@@ -809,6 +1026,7 @@ class MlCategoryAiJobQueue
                 'id_category' => $item['id_category'],
                 'id_lang' => $item['id_lang'],
                 'field_type' => $item['field_type'],
+                'source' => isset($item['source']) ? $item['source'] : 'openai',
                 'success' => $result['success'],
                 'skipped' => isset($result['skipped']) ? $result['skipped'] : false,
                 'error' => isset($result['error']) ? $result['error'] : '',
@@ -824,16 +1042,18 @@ class MlCategoryAiJobQueue
             } else {
                 ++$failed;
                 $errors[] = sprintf(
-                    'Category %d, Lang %d, Field %s: %s',
+                    'Category %d, Lang %d, Field %s (%s): %s',
                     $item['id_category'],
                     $item['id_lang'],
                     $item['field_type'],
+                    isset($item['source']) ? $item['source'] : 'openai',
                     $result['error']
                 );
             }
 
-            // Delay between requests (except for last item)
-            if ($index < count($batchItems) - 1 && $requestDelay > 0) {
+            // Delay between requests (except for last item) - only for API calls
+            $needsDelay = isset($item['source']) && in_array($item['source'], ['openai', 'google_translate']);
+            if ($index < count($batchItems) - 1 && $requestDelay > 0 && $needsDelay) {
                 sleep($requestDelay);
             }
         }
