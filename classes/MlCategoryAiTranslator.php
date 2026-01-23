@@ -173,17 +173,17 @@ class MlCategoryAiTranslator
 
         $startTime = microtime(true);
 
-        // Build request data
+        // Build request data (API key goes in URL, not body)
         $requestData = [
             'q' => $texts,
             'source' => $source,
             'target' => $target,
             'format' => $format,
-            'key' => $this->apiKey,
         ];
 
-        // Make API request
-        $response = $this->makeRequest(self::API_ENDPOINT, $requestData);
+        // Make API request with API key as URL parameter
+        $urlWithKey = self::API_ENDPOINT . '?key=' . urlencode($this->apiKey);
+        $response = $this->makeRequest($urlWithKey, $requestData);
 
         $this->lastRequestTimeMs = (int) ((microtime(true) - $startTime) * 1000);
 

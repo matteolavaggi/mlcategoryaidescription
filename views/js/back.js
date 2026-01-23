@@ -629,21 +629,17 @@
         },
 
         testGoogleApiConnection: function () {
-            var self = this;
             var btn = document.getElementById('btn-test-google-api');
             if (!btn) return;
 
             var originalHtml = btn.innerHTML;
-
             btn.innerHTML = '<i class="icon icon-spinner icon-spin"></i> Testing...';
             btn.disabled = true;
 
             this.ajaxRequest('testGoogleApi', {}, function (response) {
-                // Always reset button state first
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
 
-                // Show result message
                 if (response && response.success) {
                     alert('✓ Google Translate API connection successful!');
                 } else {

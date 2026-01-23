@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-01-23
+
+### Added
+- **Generation tracking display** in category selector
+  - Shows last generation date (dd/mm format) next to each category name
+  - Visual indicator: ● = full (4 fields), ◐ = partial generation
+  - Red styling for quick visibility
+  - Hover tooltip shows generation type
+- Uses existing `mlcategoryai_generation_log` table (no new tables)
+
+### Fixed
+- **Google Translate API key placement** - moved from POST body to URL query parameter (API requirement)
+- **CSS not loading** - ensure `displayBackOfficeHeader` hook is properly registered
+- Category tree max-height increased to 500px with scroll
+
+### Changed
+- Cleaned up debug console.log statements from JavaScript
+
 ## [1.6.0] - 2026-01-23
 
 ### Added

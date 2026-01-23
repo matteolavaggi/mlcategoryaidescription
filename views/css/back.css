@@ -83,8 +83,8 @@
 
 /* Category Tree Selector */
 .mlcatai-category-tree {
-    max-height: 400px;
-    overflow-y: auto;
+    max-height: 500px;
+    overflow-y: scroll;
     border: 1px solid #ddd;
     border-radius: 4px;
     padding: 0;
@@ -162,6 +162,20 @@
 
 .mlcatai-tree-name {
     user-select: none;
+}
+
+/* Generation info badge */
+.mlcatai-gen-info {
+    margin-left: 8px;
+    font-size: 10px;
+    color: #c0392b;
+    font-weight: normal;
+    opacity: 0.8;
+    white-space: nowrap;
+}
+
+.mlcatai-gen-info:hover {
+    opacity: 1;
 }
 
 .mlcatai-tree-children {

@@ -97,7 +97,7 @@ class Mlcategoryaidescription extends Module
     {
         $this->name = 'mlcategoryaidescription';
         $this->tab = 'administration';
-        $this->version = '1.6.0';
+        $this->version = '1.6.2';
         $this->author = '2win.agency';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -897,29 +897,76 @@ Requisiti:
             true
         );
 
-        return $this->buildCategoryTreeArray($categories);
+        // Get last generation info for all categories
+        $generationInfo = $this->getCategoriesGenerationInfo();
+
+        return $this->buildCategoryTreeArray($categories, $generationInfo);
+    }
+
+    /**
+     * Get last generation info for all categories
+     *
+     * @return array Indexed by id_category
+     */
+    protected function getCategoriesGenerationInfo()
+    {
+        $idShop = (int) $this->context->shop->id;
+
+        // Get last generation date and count of fields generated per category
+        $sql = 'SELECT 
+                    gl.id_category,
+                    MAX(gl.generated_at) as last_generated,
+                    COUNT(DISTINCT gl.field_type) as fields_count,
+                    GROUP_CONCAT(DISTINCT gl.field_type) as fields_list
+                FROM `' . _DB_PREFIX_ . 'mlcategoryai_generation_log` gl
+                WHERE gl.id_shop = ' . $idShop . '
+                AND gl.status = "success"
+                GROUP BY gl.id_category';
+
+        $results = Db::getInstance()->executeS($sql);
+
+        $info = [];
+        foreach ($results as $row) {
+            // Determine if it was a full run (4 fields) or partial
+            $fieldsCount = (int) $row['fields_count'];
+            $type = $fieldsCount >= 4 ? 'full' : 'partial';
+
+            $info[(int) $row['id_category']] = [
+                'last_generated' => $row['last_generated'],
+                'last_generated_short' => date('d/m', strtotime($row['last_generated'])),
+                'fields_count' => $fieldsCount,
+                'type' => $type,
+            ];
+        }
+
+        return $info;
     }
 
     /**
      * Build tree array from nested categories
      *
      * @param array $categories
+     * @param array $generationInfo Generation info indexed by category ID
      *
      * @return array
      */
-    protected function buildCategoryTreeArray($categories)
+    protected function buildCategoryTreeArray($categories, $generationInfo = [])
     {
         $result = [];
 
         foreach ($categories as $category) {
+            $idCategory = (int) $category['id_category'];
+
             $node = [
-                'id_category' => (int) $category['id_category'],
+                'id_category' => $idCategory,
                 'name' => $category['name'],
                 'children' => [],
+                'last_generated' => isset($generationInfo[$idCategory]) ? $generationInfo[$idCategory]['last_generated_short'] : null,
+                'generation_type' => isset($generationInfo[$idCategory]) ? $generationInfo[$idCategory]['type'] : null,
             ];
 
             if (!empty($category['children'])) {
-                $node['children'] = $this->buildCategoryTreeArray($category['children']);
+                $node['children'] = $this->buildCategoryTreeArray($category['children'], $generationInfo);
             }
 
             $result[] = $node;
@@ -1579,7 +1626,7 @@ Requisiti:
             // Add version parameter to bust CDN/proxy caches (e.g., Cloudflare)
             $cacheBuster = '?v=' . $this->version;
             $this->context->controller->addJS($this->_path . 'views/js/back.js' . $cacheBuster);
-            $this->context->controller->addCSS($this->_path . 'views/css/back.css' . $cacheBuster);
+            $this->context->controller->addCSS($this->_path . 'views/css/back.css' . $cacheBuster, 'all', null, false);
 
             // Add AJAX configuration for JavaScript
             Media::addJsDef([
