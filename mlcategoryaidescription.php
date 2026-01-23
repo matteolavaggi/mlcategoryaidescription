@@ -58,6 +58,14 @@ class Mlcategoryaidescription extends Module
     const CONFIG_CRON_TOKEN = 'MLCATEGORYAI_CRON_TOKEN';
 
     /**
+     * Google Translate Settings Keys
+     */
+    const CONFIG_GOOGLE_TRANSLATE_ENABLED = 'MLCATEGORYAI_GOOGLE_TRANSLATE_ENABLED';
+    const CONFIG_GOOGLE_TRANSLATE_API_KEY = 'MLCATEGORYAI_GOOGLE_TRANSLATE_API_KEY';
+    const CONFIG_PRIMARY_LANGUAGE = 'MLCATEGORYAI_PRIMARY_LANGUAGE';
+    const CONFIG_TRANSLATE_LANGUAGES = 'MLCATEGORYAI_TRANSLATE_LANGUAGES';
+
+    /**
      * Module State Keys
      */
     const CONFIG_LIVE_MODE = 'MLCATEGORYAI_LIVE_MODE';
@@ -88,7 +96,7 @@ class Mlcategoryaidescription extends Module
     {
         $this->name = 'mlcategoryaidescription';
         $this->tab = 'administration';
-        $this->version = '1.5.0';
+        $this->version = '1.6.0';
         $this->author = '2win.agency';
         $this->need_instance = 0;
         $this->bootstrap = true;
