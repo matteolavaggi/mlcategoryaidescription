@@ -162,7 +162,7 @@
 
 				<div class="alert alert-success" style="font-size: 12px;">
 					<strong>{l s='CLI Mode (Recommended for large jobs):' mod='mlcategoryaidescription'}</strong><br>
-					<code style="display: block; margin-top: 5px; background: #f5f5f5; padding: 5px; font-size: 11px;">php {$smarty.const._PS_ROOT_DIR_|escape:'htmlall':'UTF-8'}/modules/mlcategoryaidescription/cron-cli.php</code>
+					<code style="display: block; margin-top: 5px; background: #f5f5f5; padding: 5px; font-size: 11px; word-break: break-all; overflow-wrap: break-word;">php {$smarty.const._PS_ROOT_DIR_|escape:'htmlall':'UTF-8'}/modules/mlcategoryaidescription/cron-cli.php</code>
 					<small class="text-muted">{l s='No timeout, runs until job completes.' mod='mlcategoryaidescription'}</small>
 				</div>
 
