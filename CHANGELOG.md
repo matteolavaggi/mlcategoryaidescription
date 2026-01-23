@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-01-23
+
+### Changed
+- **Batched API Calls** - 75% reduction in API calls
+  - OpenAI: All fields for a category generated in single JSON request
+  - Google Translate: All fields translated in single batch call
+  - Uses `response_format: json_object` for guaranteed valid JSON responses
+- Job queue now counts by category/language pairs instead of individual fields
+- Simplified error handling: category succeeds or fails atomically
+
+### Added
+- `generateCategoryBatch()` method for multi-field OpenAI generation
+- `translateCategoryBatch()` method for multi-field translation
+- `generateJson()` client method with native JSON response format
+
+### Technical
+- Prompt templates from DB are combined into structured JSON request
+- link_rewrite excluded from AI, generated locally from meta_title
+- HTML stripped from non-description fields after translation
+
 ## [1.6.2] - 2026-01-23
 
 ### Added
