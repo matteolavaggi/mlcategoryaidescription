@@ -52,6 +52,7 @@ composer.lock
 # ================================
 *.log
 logs/*.log
+logs/*.lock
 cache/
 tmp/
 *.cache
