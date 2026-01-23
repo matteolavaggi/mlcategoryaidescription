@@ -26,6 +26,7 @@ if (!defined('_PS_VERSION_')) {
 require_once dirname(__FILE__) . '/MlCategoryAiClient.php';
 require_once dirname(__FILE__) . '/MlCategoryAiPlaceholder.php';
 require_once dirname(__FILE__) . '/MlCategoryAiLogger.php';
+require_once dirname(__FILE__) . '/MlCategoryAiTranslator.php';
 
 /**
  * Content generator for categories using AI

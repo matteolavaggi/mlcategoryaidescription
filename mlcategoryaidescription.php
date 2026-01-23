@@ -803,7 +803,7 @@ Requisiti:
             'google_translate_enabled' => (bool) Configuration::get(self::CONFIG_GOOGLE_TRANSLATE_ENABLED),
             'google_translate_configured' => !empty(Configuration::get(self::CONFIG_GOOGLE_TRANSLATE_API_KEY)),
             'primary_language_id' => (int) Configuration::get(self::CONFIG_PRIMARY_LANGUAGE),
-            'translate_language_ids' => json_decode(Configuration::get(self::CONFIG_TRANSLATE_LANGUAGES), true) ?: [],
+            'translate_language_ids' => array_map('intval', json_decode(Configuration::get(self::CONFIG_TRANSLATE_LANGUAGES), true) ?: []),
         ]);
 
         // Add header info panel FIRST
@@ -1353,7 +1353,7 @@ Requisiti:
     protected function getTranslateLanguagesHtml()
     {
         $languages = Language::getLanguages(true);
-        $selectedLangs = json_decode(Configuration::get(self::CONFIG_TRANSLATE_LANGUAGES), true) ?: [];
+        $selectedLangs = array_map('intval', json_decode(Configuration::get(self::CONFIG_TRANSLATE_LANGUAGES), true) ?: []);
         $primaryLang = (int) Configuration::get(self::CONFIG_PRIMARY_LANGUAGE);
 
         $html = '<div class="translate-languages-container">';

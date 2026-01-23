@@ -76,12 +76,18 @@ class MlCategoryAiJobQueue
         if ($useGoogleTranslate && $primaryLanguageId) {
             // Phase 1: categories × 1 language × fields (OpenAI)
             $openAiItems = count($categoryIds) * 1 * count($fieldsToGenerate);
-            // Phase 2: categories × target languages × fields (Google Translate)
-            // Note: link_rewrite is generated locally, not via GT API
+
+            // Phase 2: categories × target languages × fields (Google Translate + local)
+            // link_rewrite is generated locally (not via GT API), but still counts as an item
             $fieldsForTranslate = array_filter($fieldsToGenerate, function ($field) {
                 return $field !== Mlcategoryaidescription::FIELD_LINK_REWRITE;
             });
-            $gtItems = count($categoryIds) * count($translateLanguageIds) * count($fieldsForTranslate);
+            $hasLinkRewrite = in_array(Mlcategoryaidescription::FIELD_LINK_REWRITE, $fieldsToGenerate);
+
+            // GT items for each translate field + local link_rewrite if selected
+            $gtItemsPerCategory = count($fieldsForTranslate) + ($hasLinkRewrite ? 1 : 0);
+            $gtItems = count($categoryIds) * count($translateLanguageIds) * $gtItemsPerCategory;
+
             $totalItems = $openAiItems + $gtItems;
         } else {
             // Original flow: categories × languages × fields
