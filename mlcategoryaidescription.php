@@ -1020,6 +1020,7 @@ Requisiti:
             $this->getConfigFormApi(),
             $this->getConfigFormGeneration(),
             $this->getConfigFormPrompts(),
+            $this->getConfigFormTranslation(),
             $this->getConfigFormCron(),
         ]);
     }
@@ -1272,6 +1273,103 @@ Requisiti:
     }
 
     /**
+     * Google Translate settings form
+     *
+     * @return array
+     */
+    protected function getConfigFormTranslation()
+    {
+        $languages = Language::getLanguages(true);
+        $languageOptions = [];
+        foreach ($languages as $lang) {
+            $languageOptions[] = [
+                'id' => $lang['id_lang'],
+                'name' => $lang['name'],
+            ];
+        }
+
+        return [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Google Translate Settings'),
+                    'icon' => 'icon-globe',
+                ],
+                'description' => $this->l('Use Google Translate to automatically translate content from the primary language to other languages. This reduces OpenAI API calls and processing time.'),
+                'input' => [
+                    [
+                        'type' => 'switch',
+                        'label' => $this->l('Enable Google Translate'),
+                        'name' => self::CONFIG_GOOGLE_TRANSLATE_ENABLED,
+                        'is_bool' => true,
+                        'desc' => $this->l('When enabled, content is generated in the primary language only, then translated to other languages using Google Translate API.'),
+                        'values' => [
+                            ['id' => 'gt_on', 'value' => true, 'label' => $this->l('Enabled')],
+                            ['id' => 'gt_off', 'value' => false, 'label' => $this->l('Disabled')],
+                        ],
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->l('Google Translate API Key'),
+                        'name' => self::CONFIG_GOOGLE_TRANSLATE_API_KEY,
+                        'desc' => $this->l('Your Google Cloud Translation API key. Get one from: https://console.cloud.google.com/apis'),
+                        'class' => 'fixed-width-xxl',
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Primary Language'),
+                        'name' => self::CONFIG_PRIMARY_LANGUAGE,
+                        'desc' => $this->l('Content will be generated in this language using OpenAI, then translated to other languages.'),
+                        'options' => [
+                            'query' => $languageOptions,
+                            'id' => 'id',
+                            'name' => 'name',
+                        ],
+                    ],
+                    [
+                        'type' => 'html',
+                        'label' => $this->l('Translate to Languages'),
+                        'name' => 'translate_languages_select',
+                        'html_content' => $this->getTranslateLanguagesHtml(),
+                    ],
+                ],
+                'submit' => [
+                    'title' => $this->l('Save'),
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Get HTML for translate languages selection
+     *
+     * @return string
+     */
+    protected function getTranslateLanguagesHtml()
+    {
+        $languages = Language::getLanguages(true);
+        $selectedLangs = json_decode(Configuration::get(self::CONFIG_TRANSLATE_LANGUAGES), true) ?: [];
+        $primaryLang = (int) Configuration::get(self::CONFIG_PRIMARY_LANGUAGE);
+
+        $html = '<div class="translate-languages-container">';
+        foreach ($languages as $lang) {
+            $checked = in_array((int) $lang['id_lang'], $selectedLangs) ? 'checked' : '';
+            $disabled = ((int) $lang['id_lang'] === $primaryLang) ? 'disabled' : '';
+            $primaryNote = ((int) $lang['id_lang'] === $primaryLang) ? ' <em>(' . $this->l('primary') . ')</em>' : '';
+
+            $html .= '<div class="checkbox">';
+            $html .= '<label>';
+            $html .= '<input type="checkbox" name="translate_languages[]" value="' . (int) $lang['id_lang'] . '" ' . $checked . ' ' . $disabled . '>';
+            $html .= htmlspecialchars($lang['name'], ENT_QUOTES, 'UTF-8') . $primaryNote;
+            $html .= '</label>';
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+        $html .= '<p class="help-block">' . $this->l('Select the languages to translate into. The primary language is automatically excluded.') . '</p>';
+
+        return $html;
+    }
+
+    /**
      * Cron settings form
      *
      * @return array
@@ -1346,6 +1444,10 @@ Requisiti:
             self::CONFIG_TEMPERATURE => Configuration::get(self::CONFIG_TEMPERATURE),
             self::CONFIG_REQUEST_DELAY => Configuration::get(self::CONFIG_REQUEST_DELAY),
             self::CONFIG_CRON_ENABLED => Configuration::get(self::CONFIG_CRON_ENABLED),
+            // Google Translate settings
+            self::CONFIG_GOOGLE_TRANSLATE_ENABLED => Configuration::get(self::CONFIG_GOOGLE_TRANSLATE_ENABLED),
+            self::CONFIG_GOOGLE_TRANSLATE_API_KEY => $this->decryptApiKey(Configuration::get(self::CONFIG_GOOGLE_TRANSLATE_API_KEY)),
+            self::CONFIG_PRIMARY_LANGUAGE => Configuration::get(self::CONFIG_PRIMARY_LANGUAGE),
         ];
     }
 
@@ -1375,10 +1477,32 @@ Requisiti:
             self::CONFIG_TEMPERATURE,
             self::CONFIG_REQUEST_DELAY,
             self::CONFIG_CRON_ENABLED,
+            // Google Translate settings (except API key and translate_languages)
+            self::CONFIG_GOOGLE_TRANSLATE_ENABLED,
+            self::CONFIG_PRIMARY_LANGUAGE,
         ];
 
         foreach ($configKeys as $key) {
             Configuration::updateValue($key, Tools::getValue($key));
+        }
+
+        // Handle Google Translate API key encryption
+        $gtApiKey = Tools::getValue(self::CONFIG_GOOGLE_TRANSLATE_API_KEY);
+        if (!empty($gtApiKey)) {
+            Configuration::updateValue(self::CONFIG_GOOGLE_TRANSLATE_API_KEY, $this->encryptApiKey($gtApiKey));
+        }
+
+        // Handle translate languages (array of checkboxes)
+        $translateLanguages = Tools::getValue('translate_languages');
+        if (is_array($translateLanguages)) {
+            // Filter out the primary language
+            $primaryLang = (int) Tools::getValue(self::CONFIG_PRIMARY_LANGUAGE);
+            $translateLanguages = array_filter($translateLanguages, function ($langId) use ($primaryLang) {
+                return (int) $langId !== $primaryLang;
+            });
+            Configuration::updateValue(self::CONFIG_TRANSLATE_LANGUAGES, json_encode(array_values(array_map('intval', $translateLanguages))));
+        } else {
+            Configuration::updateValue(self::CONFIG_TRANSLATE_LANGUAGES, '[]');
         }
     }
 
