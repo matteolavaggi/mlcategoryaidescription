@@ -133,6 +133,11 @@ class Mlcategoryaidescription extends Module
             self::CONFIG_CRON_ENABLED => false,
             self::CONFIG_CRON_TOKEN => Tools::passwdGen(32),
             self::CONFIG_PARALLEL_REQUESTS => true,
+            // Google Translate settings
+            self::CONFIG_GOOGLE_TRANSLATE_ENABLED => false,
+            self::CONFIG_GOOGLE_TRANSLATE_API_KEY => '',
+            self::CONFIG_PRIMARY_LANGUAGE => (int) Configuration::get('PS_LANG_DEFAULT'),
+            self::CONFIG_TRANSLATE_LANGUAGES => '[]',
         ];
 
         foreach ($defaults as $key => $defaultValue) {
@@ -227,6 +232,10 @@ class Mlcategoryaidescription extends Module
             self::CONFIG_REQUEST_DELAY,
             self::CONFIG_CRON_ENABLED,
             self::CONFIG_CRON_TOKEN,
+            self::CONFIG_GOOGLE_TRANSLATE_ENABLED,
+            self::CONFIG_GOOGLE_TRANSLATE_API_KEY,
+            self::CONFIG_PRIMARY_LANGUAGE,
+            self::CONFIG_TRANSLATE_LANGUAGES,
         ];
 
         foreach ($configKeys as $key) {
