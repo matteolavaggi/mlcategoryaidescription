@@ -25,13 +25,13 @@ if (!defined('_PS_VERSION_')) {
 
 $sql = [];
 
-// Only drop job and log tables on uninstall
-// Keep configuration and prompt templates for reinstall
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_generation_log`';
+// Only drop job queue on uninstall (pending jobs not needed after uninstall)
+// PRESERVE generation_log and run_stats for historical tracking data
 $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_job_queue`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_run_stats`';
 
 // Uncomment the following lines if you want to completely remove all data:
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_generation_log`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_run_stats`';
 // $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang`';
 // $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`';
 
