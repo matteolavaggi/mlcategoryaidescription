@@ -397,6 +397,366 @@ class MlCategoryAiGenerator
     }
 
     /**
+     * Generate all fields for a category in a single API call (batched)
+     * Uses existing prompt templates from DB, combines them into structured JSON request
+     *
+     * @param int $idCategory
+     * @param int $idLang
+     * @param array $fields ['description', 'meta_title', 'meta_description', 'meta_keywords']
+     * @param string $writeMode overwrite|fill_missing
+     *
+     * @return array ['success' => bool, 'results' => [...], 'error' => string, 'tokens' => int]
+     */
+    public function generateCategoryBatch($idCategory, $idLang, array $fields, $writeMode = 'fill_missing')
+    {
+        $t0 = microtime(true);
+
+        $result = [
+            'success' => false,
+            'results' => [],
+            'error' => '',
+            'tokens' => 0,
+            'skipped' => false,
+            'skipped_fields' => [],
+        ];
+
+        // Load category
+        $category = new Category((int) $idCategory, (int) $idLang);
+        if (!Validate::isLoadedObject($category)) {
+            $result['error'] = 'Category not found: ' . $idCategory;
+            MlCategoryAiLogger::error('Category not found: ' . $idCategory);
+
+            return $result;
+        }
+
+        $placeholder = new MlCategoryAiPlaceholder($idCategory, $idLang, $this->idShop);
+
+        // Build combined prompt using existing templates
+        $fieldPrompts = [];
+        $skippedFields = [];
+        $hasLinkRewrite = false;
+
+        foreach ($fields as $fieldType) {
+            // link_rewrite is generated locally from meta_title, not by AI
+            if ($fieldType === Mlcategoryaidescription::FIELD_LINK_REWRITE) {
+                $hasLinkRewrite = true;
+                continue;
+            }
+
+            // Skip if fill_missing and field has content
+            if ($writeMode === Mlcategoryaidescription::WRITE_MODE_FILL_MISSING) {
+                $existing = $this->getFieldValue($category, $fieldType);
+                if (!empty(trim(strip_tags($existing)))) {
+                    $skippedFields[] = $fieldType;
+                    continue;
+                }
+            }
+
+            // Get the prompt template from DB (respects user customizations)
+            $template = $this->getPromptTemplate($fieldType, $idLang);
+            if (empty($template)) {
+                MlCategoryAiLogger::warning('No prompt template for field=' . $fieldType . ' lang=' . $idLang);
+                continue;
+            }
+
+            $resolvedPrompt = $placeholder->resolve($template);
+            $fieldPrompts[$fieldType] = $resolvedPrompt;
+        }
+
+        // If all fields were skipped, return success
+        if (empty($fieldPrompts)) {
+            $result['success'] = true;
+            $result['skipped'] = true;
+            $result['skipped_fields'] = $skippedFields;
+
+            // Still generate link_rewrite if requested and meta_title exists
+            if ($hasLinkRewrite) {
+                $linkResult = $this->generateLinkRewriteFromMetaTitle($idCategory, $idLang, $writeMode);
+                $result['results'][Mlcategoryaidescription::FIELD_LINK_REWRITE] = $linkResult['success'] ? 'success' : 'failed';
+            }
+
+            MlCategoryAiLogger::debug('All fields skipped (fill_missing mode)', [
+                'category_id' => $idCategory,
+                'lang_id' => $idLang,
+            ]);
+
+            return $result;
+        }
+
+        // Build the combined JSON request
+        $combinedPrompt = $this->buildCombinedJsonPrompt($fieldPrompts, $idLang, $placeholder);
+
+        MlCategoryAiLogger::debug('generateCategoryBatch: calling generateJson', [
+            'category_id' => $idCategory,
+            'lang_id' => $idLang,
+            'fields' => array_keys($fieldPrompts),
+            'prompt_length' => strlen($combinedPrompt),
+        ]);
+
+        // Use response_format for guaranteed JSON
+        $response = $this->client->generateJson($combinedPrompt);
+
+        if ($response === false) {
+            $result['error'] = $this->client->getLastError();
+            MlCategoryAiLogger::error('generateCategoryBatch API error', [
+                'category_id' => $idCategory,
+                'error' => $result['error'],
+            ]);
+
+            return $result;
+        }
+
+        // Parse and save results (atomic: all or nothing)
+        $saveResult = $this->parseAndSaveBatchResults($response, $category, $fieldPrompts, $idLang, $hasLinkRewrite, $writeMode);
+
+        $saveResult['skipped_fields'] = $skippedFields;
+        $saveResult['tokens'] = $this->client->getLastTokensUsed();
+
+        $t1 = microtime(true);
+        MlCategoryAiLogger::debug('generateCategoryBatch completed', [
+            'category_id' => $idCategory,
+            'lang_id' => $idLang,
+            'success' => $saveResult['success'],
+            'time_ms' => round(($t1 - $t0) * 1000),
+            'tokens' => $saveResult['tokens'],
+        ]);
+
+        return $saveResult;
+    }
+
+    /**
+     * Build combined prompt that embeds all field prompts and requests JSON output
+     *
+     * @param array $fieldPrompts Resolved prompts per field
+     * @param int $idLang Language ID
+     * @param MlCategoryAiPlaceholder $placeholder Placeholder resolver
+     *
+     * @return string Combined prompt
+     */
+    protected function buildCombinedJsonPrompt(array $fieldPrompts, $idLang, $placeholder)
+    {
+        $languageName = $placeholder->resolve('{language_name}');
+
+        $prompt = "Generate SEO content in {$languageName}. For each field below, follow the specific instructions provided.\n\n";
+
+        foreach ($fieldPrompts as $fieldType => $fieldPrompt) {
+            $prompt .= "=== FIELD: {$fieldType} ===\n";
+            $prompt .= $fieldPrompt . "\n\n";
+        }
+
+        $prompt .= "RESPONSE FORMAT:\n";
+        $prompt .= "Return a JSON object with these exact keys: " . json_encode(array_keys($fieldPrompts)) . "\n";
+        $prompt .= "Each value should be the generated content for that field.\n";
+        $prompt .= "For 'description': use HTML tags (<p>, <h2>, <strong>, <ul>, <li>). Do NOT use Markdown.\n";
+        $prompt .= "For other fields: plain text only, no HTML, no Markdown.\n";
+
+        return $prompt;
+    }
+
+    /**
+     * Parse JSON response and save all fields to category
+     * Atomic: if any field is missing, fail entirely without saving anything
+     *
+     * @param array $jsonData Parsed JSON from OpenAI
+     * @param Category $category
+     * @param array $fieldPrompts Fields that were requested (excludes link_rewrite)
+     * @param int $idLang
+     * @param bool $hasLinkRewrite Whether link_rewrite should be generated
+     * @param string $writeMode Write mode for link_rewrite
+     *
+     * @return array Result with success, results, error
+     */
+    protected function parseAndSaveBatchResults($jsonData, $category, $fieldPrompts, $idLang, $hasLinkRewrite, $writeMode)
+    {
+        $result = [
+            'success' => false,
+            'results' => [],
+            'error' => '',
+        ];
+
+        // First, validate all required fields are present
+        foreach (array_keys($fieldPrompts) as $fieldType) {
+            if (!isset($jsonData[$fieldType])) {
+                MlCategoryAiLogger::error('Missing field in JSON response: ' . $fieldType, [
+                    'category_id' => $category->id,
+                    'lang_id' => $idLang,
+                    'received_keys' => array_keys($jsonData),
+                ]);
+                $result['error'] = 'Missing field in JSON response: ' . $fieldType;
+
+                return $result;
+            }
+        }
+
+        // All fields present, now save them
+        foreach (array_keys($fieldPrompts) as $fieldType) {
+            $content = $this->cleanContent($jsonData[$fieldType], $fieldType);
+            $updateResult = $this->updateCategoryField($category, $fieldType, $content, $idLang);
+            $result['results'][$fieldType] = $updateResult ? 'success' : 'failed';
+
+            // Log generation
+            if ($updateResult) {
+                $this->logGeneration($category->id, $idLang, $fieldType, 'success', '', $this->client->getLastTokensUsed());
+            } else {
+                $this->logGeneration($category->id, $idLang, $fieldType, 'error', 'Failed to update field');
+            }
+        }
+
+        // Generate link_rewrite from meta_title if it was in original request
+        if ($hasLinkRewrite) {
+            $linkResult = $this->generateLinkRewriteFromMetaTitle($category->id, $idLang, $writeMode);
+            $result['results'][Mlcategoryaidescription::FIELD_LINK_REWRITE] = $linkResult['success'] ? 'success' : 'failed';
+        }
+
+        $result['success'] = true;
+
+        return $result;
+    }
+
+    /**
+     * Translate all fields for a category in a single API call (batched)
+     *
+     * @param int $idCategory
+     * @param int $idTargetLang Target language ID
+     * @param array $fields Fields to translate
+     * @param int $idSourceLang Source language ID (primary language)
+     * @param string $writeMode overwrite|fill_missing
+     *
+     * @return array Result with per-field status
+     */
+    public function translateCategoryBatch($idCategory, $idTargetLang, array $fields, $idSourceLang, $writeMode = 'fill_missing')
+    {
+        $result = [
+            'success' => false,
+            'results' => [],
+            'chars_translated' => 0,
+            'skipped' => false,
+            'skipped_fields' => [],
+            'error' => '',
+        ];
+
+        $sourceCategory = new Category((int) $idCategory, (int) $idSourceLang);
+        $targetCategory = new Category((int) $idCategory, (int) $idTargetLang);
+
+        if (!Validate::isLoadedObject($sourceCategory)) {
+            $result['error'] = 'Source category not found: ' . $idCategory;
+
+            return $result;
+        }
+
+        if (!Validate::isLoadedObject($targetCategory)) {
+            $result['error'] = 'Target category not found: ' . $idCategory;
+
+            return $result;
+        }
+
+        // Collect texts to translate (skip fields with existing content in fill_missing mode)
+        $textsToTranslate = [];
+        $skippedFields = [];
+        $hasLinkRewrite = false;
+
+        foreach ($fields as $fieldType) {
+            if ($fieldType === Mlcategoryaidescription::FIELD_LINK_REWRITE) {
+                $hasLinkRewrite = true;
+                continue;  // Generated locally, not translated
+            }
+
+            if ($writeMode === Mlcategoryaidescription::WRITE_MODE_FILL_MISSING) {
+                $existing = $this->getFieldValue($targetCategory, $fieldType);
+                if (!empty(trim(strip_tags($existing)))) {
+                    $skippedFields[] = $fieldType;
+                    continue;
+                }
+            }
+
+            $sourceText = $this->getFieldValue($sourceCategory, $fieldType);
+            if (!empty(trim(strip_tags($sourceText)))) {
+                $textsToTranslate[$fieldType] = $sourceText;
+            }
+        }
+
+        $result['skipped_fields'] = $skippedFields;
+
+        if (empty($textsToTranslate)) {
+            $result['success'] = true;
+            $result['skipped'] = true;
+
+            // Still generate link_rewrite if requested
+            if ($hasLinkRewrite) {
+                $linkResult = $this->generateLinkRewriteFromMetaTitle($idCategory, $idTargetLang, $writeMode);
+                $result['results'][Mlcategoryaidescription::FIELD_LINK_REWRITE] = $linkResult['success'] ? 'success' : 'failed';
+            }
+
+            return $result;
+        }
+
+        // Get ISO codes
+        $sourceIso = Language::getIsoById($idSourceLang);
+        $targetIso = Language::getIsoById($idTargetLang);
+
+        if (!$sourceIso || !$targetIso) {
+            $result['error'] = 'Could not get language ISO codes';
+
+            return $result;
+        }
+
+        // Single API call for all fields (use HTML format, strip later for non-HTML fields)
+        $translator = MlCategoryAiTranslator::createFromConfig($this->module);
+        $translations = $translator->translateBatch(
+            array_values($textsToTranslate),
+            $sourceIso,
+            $targetIso,
+            'html'
+        );
+
+        if ($translations === false) {
+            $result['error'] = 'Translation failed: ' . $translator->getLastError();
+            MlCategoryAiLogger::error('translateCategoryBatch failed', [
+                'category_id' => $idCategory,
+                'source_lang' => $sourceIso,
+                'target_lang' => $targetIso,
+                'error' => $translator->getLastError(),
+            ]);
+
+            return $result;
+        }
+
+        // Map translations back to fields and save
+        $fieldKeys = array_keys($textsToTranslate);
+        foreach ($translations as $index => $translatedText) {
+            $fieldType = $fieldKeys[$index];
+
+            // Strip HTML from non-description fields (purify after translation)
+            if ($fieldType !== Mlcategoryaidescription::FIELD_DESCRIPTION) {
+                $translatedText = strip_tags($translatedText);
+                $translatedText = html_entity_decode($translatedText, ENT_QUOTES, 'UTF-8');
+            }
+
+            $updateResult = $this->updateCategoryField($targetCategory, $fieldType, $translatedText, $idTargetLang);
+            $result['results'][$fieldType] = $updateResult ? 'success' : 'failed';
+        }
+
+        // Generate link_rewrite locally if included in fields
+        if ($hasLinkRewrite) {
+            $linkResult = $this->generateLinkRewriteFromMetaTitle($idCategory, $idTargetLang, $writeMode);
+            $result['results'][Mlcategoryaidescription::FIELD_LINK_REWRITE] = $linkResult['success'] ? 'success' : 'failed';
+        }
+
+        $result['success'] = true;
+        $result['chars_translated'] = $translator->getLastCharactersTranslated();
+
+        MlCategoryAiLogger::debug('translateCategoryBatch completed', [
+            'category_id' => $idCategory,
+            'source_lang' => $sourceIso,
+            'target_lang' => $targetIso,
+            'fields_translated' => count($translations),
+            'chars' => $result['chars_translated'],
+        ]);
+
+        return $result;
+    }
+
+    /**
      * Get field value from category
      *
      * @param Category $category
