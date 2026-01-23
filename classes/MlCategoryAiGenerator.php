@@ -195,6 +195,207 @@ class MlCategoryAiGenerator
     }
 
     /**
+     * Translate a field from source language to target language using Google Translate
+     *
+     * @param int $idCategory Category ID
+     * @param int $idTargetLang Target language ID
+     * @param string $fieldType Field type to translate
+     * @param int $idSourceLang Source language ID (primary language)
+     * @param string $writeMode overwrite|fill_missing
+     *
+     * @return array Result with 'success', 'content', 'error', 'chars_translated'
+     */
+    public function translateField($idCategory, $idTargetLang, $fieldType, $idSourceLang, $writeMode = 'fill_missing')
+    {
+        $result = [
+            'success' => false,
+            'content' => '',
+            'error' => '',
+            'skipped' => false,
+            'chars_translated' => 0,
+        ];
+
+        // Load category for target language
+        $category = new Category((int) $idCategory, (int) $idTargetLang);
+
+        if (!Validate::isLoadedObject($category)) {
+            $result['error'] = 'Category not found: ' . $idCategory;
+
+            return $result;
+        }
+
+        // Check if should skip (fill_missing mode)
+        if ($writeMode === Mlcategoryaidescription::WRITE_MODE_FILL_MISSING) {
+            $existingContent = $this->getFieldValue($category, $fieldType);
+            if (!empty(trim(strip_tags($existingContent)))) {
+                $result['success'] = true;
+                $result['skipped'] = true;
+
+                return $result;
+            }
+        }
+
+        // Load source category to get primary content
+        $sourceCategory = new Category((int) $idCategory, (int) $idSourceLang);
+
+        if (!Validate::isLoadedObject($sourceCategory)) {
+            $result['error'] = 'Source category not found for language: ' . $idSourceLang;
+
+            return $result;
+        }
+
+        // Get source content
+        $sourceContent = $this->getFieldValue($sourceCategory, $fieldType);
+
+        if (empty(trim(strip_tags($sourceContent)))) {
+            MlCategoryAiLogger::warning('Skipping translation: primary content is empty', [
+                'category_id' => $idCategory,
+                'field' => $fieldType,
+                'source_lang' => $idSourceLang,
+                'target_lang' => $idTargetLang,
+            ]);
+            $result['error'] = 'Primary content is empty';
+
+            return $result;
+        }
+
+        // Get ISO codes
+        $sourceLangIso = Language::getIsoById((int) $idSourceLang);
+        $targetLangIso = Language::getIsoById((int) $idTargetLang);
+
+        if (!$sourceLangIso || !$targetLangIso) {
+            $result['error'] = 'Could not get language ISO codes';
+
+            return $result;
+        }
+
+        // Determine format based on field type
+        $format = ($fieldType === Mlcategoryaidescription::FIELD_DESCRIPTION) ? 'html' : 'text';
+
+        // Create translator and translate
+        $translator = MlCategoryAiTranslator::createFromConfig($this->module);
+        $translatedContent = $translator->translate($sourceContent, $sourceLangIso, $targetLangIso, $format);
+
+        if ($translatedContent === false) {
+            $result['error'] = 'Translation failed: ' . $translator->getLastError();
+            MlCategoryAiLogger::error('Translation failed', [
+                'category_id' => $idCategory,
+                'field' => $fieldType,
+                'source_lang' => $sourceLangIso,
+                'target_lang' => $targetLangIso,
+                'error' => $translator->getLastError(),
+            ]);
+
+            return $result;
+        }
+
+        // Update category field
+        $updateResult = $this->updateCategoryField($category, $fieldType, $translatedContent, $idTargetLang);
+
+        if (!$updateResult) {
+            $result['error'] = 'Failed to update category field';
+
+            return $result;
+        }
+
+        $result['success'] = true;
+        $result['content'] = $translatedContent;
+        $result['chars_translated'] = $translator->getLastCharactersTranslated();
+
+        MlCategoryAiLogger::debug('Translation successful', [
+            'category_id' => $idCategory,
+            'field' => $fieldType,
+            'source_lang' => $sourceLangIso,
+            'target_lang' => $targetLangIso,
+            'chars' => $result['chars_translated'],
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Generate link_rewrite from the category's meta_title (or name) for a given language
+     * Used in Google Translate mode where link_rewrite is generated locally from translated meta_title
+     *
+     * @param int $idCategory Category ID
+     * @param int $idLang Target language ID
+     * @param string $writeMode overwrite|fill_missing
+     *
+     * @return array Result with 'success', 'content', 'error'
+     */
+    public function generateLinkRewriteFromMetaTitle($idCategory, $idLang, $writeMode = 'fill_missing')
+    {
+        $result = [
+            'success' => false,
+            'content' => '',
+            'error' => '',
+            'skipped' => false,
+        ];
+
+        // Load category
+        $category = new Category((int) $idCategory, (int) $idLang);
+
+        if (!Validate::isLoadedObject($category)) {
+            $result['error'] = 'Category not found: ' . $idCategory;
+
+            return $result;
+        }
+
+        // Check if should skip (fill_missing mode)
+        if ($writeMode === Mlcategoryaidescription::WRITE_MODE_FILL_MISSING) {
+            $existingLinkRewrite = $this->getFieldValue($category, Mlcategoryaidescription::FIELD_LINK_REWRITE);
+            if (!empty(trim($existingLinkRewrite))) {
+                $result['success'] = true;
+                $result['skipped'] = true;
+
+                return $result;
+            }
+        }
+
+        // Get meta_title first, fallback to name
+        $sourceText = $category->meta_title;
+        if (empty(trim($sourceText))) {
+            $sourceText = $category->name;
+        }
+
+        if (empty(trim($sourceText))) {
+            $result['error'] = 'No meta_title or name available for link_rewrite generation';
+
+            return $result;
+        }
+
+        // Generate URL-safe link_rewrite using PrestaShop's native function
+        $linkRewrite = Tools::str2url($sourceText);
+
+        if (empty($linkRewrite)) {
+            $result['error'] = 'Failed to generate valid link_rewrite from: ' . $sourceText;
+
+            return $result;
+        }
+
+        // Update category field
+        $updateResult = $this->updateCategoryField($category, Mlcategoryaidescription::FIELD_LINK_REWRITE, $linkRewrite, $idLang);
+
+        if (!$updateResult) {
+            $result['error'] = 'Failed to update link_rewrite field';
+
+            return $result;
+        }
+
+        $result['success'] = true;
+        $result['content'] = $linkRewrite;
+
+        MlCategoryAiLogger::debug('link_rewrite generated from meta_title', [
+            'category_id' => $idCategory,
+            'lang_id' => $idLang,
+            'source' => $sourceText,
+            'link_rewrite' => $linkRewrite,
+        ]);
+
+        return $result;
+    }
+
+    /**
      * Get field value from category
      *
      * @param Category $category
