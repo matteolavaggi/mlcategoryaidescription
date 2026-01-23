@@ -29,6 +29,7 @@ require_once __DIR__ . '/classes/MlCategoryAiGenerator.php';
 require_once __DIR__ . '/classes/MlCategoryAiJobQueue.php';
 require_once __DIR__ . '/classes/MlCategoryAiPlaceholder.php';
 require_once __DIR__ . '/classes/MlCategoryAiRunStats.php';
+require_once __DIR__ . '/classes/MlCategoryAiTranslator.php';
 
 class Mlcategoryaidescription extends Module
 {

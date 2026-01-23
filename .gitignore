@@ -62,3 +62,4 @@ tmp/
 # These are excluded by zip.sh but also ignore in git for cleanliness
 # PROJECT.md
 # README_DEV.md
+yaml/
