@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-01-23
+
+### Added
+- **Google Translate Integration** - New two-phase processing mode:
+  - Generate content in primary language using OpenAI
+  - Automatically translate to other languages using Google Translate API
+  - Significantly faster and more cost-effective for multi-language stores
+- New `MlCategoryAiTranslator` class for Google Translate API v2 integration
+- Translation Settings form section in module configuration
+  - Enable/disable Google Translate mode
+  - API key configuration (encrypted storage)
+  - Primary language selection
+  - Target languages checkboxes
+- Test Google Translate API button
+- ISO code mapping for non-standard PrestaShop codes (gb→en, br→pt, mx→es, etc.)
+- HTML format preservation for description field translations
+- Two-phase job processing:
+  - Phase 1: OpenAI generation for primary language
+  - Phase 2: Google Translate for target languages
+- Progress bar shows combined progress (60% OpenAI, 40% translation)
+- `translateField()` method for single field translation
+- `generateLinkRewriteFromMetaTitle()` for local link_rewrite generation
+
+### Changed
+- Job creation now supports `gtOptions` parameter for translation settings
+- Progress calculation shows phase-aware percentages
+- Parallel processing only applies to OpenAI phase
+- Enforce field order (meta_title before link_rewrite) for proper translation flow
+- Renamed "Test API Connection" to "Test OpenAI Connection"
+
+### Technical
+- New database columns in `mlcategoryai_job_queue`:
+  - `use_google_translate`, `primary_language_id`, `translate_language_ids`
+  - `phase`, `current_translate_lang_index`, `current_translate_position`
+- Upgrade script `upgrade-1.6.0.php` for existing installations
+- New configuration constants: `CONFIG_GOOGLE_TRANSLATE_*`
+
 ## [1.5.0] - 2026-01-22
 
 ### Added
