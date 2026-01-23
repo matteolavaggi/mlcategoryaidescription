@@ -98,6 +98,19 @@
                 self.testApiConnection();
             });
 
+            // Test Google Translate API button
+            addEvent('btn-test-google-api', 'click', function () {
+                self.testGoogleApiConnection();
+            });
+
+            // Google Translate toggle
+            addEvent('use-google-translate', 'change', function () {
+                var details = document.getElementById('google-translate-details');
+                if (details) {
+                    details.style.display = this.checked ? 'block' : 'none';
+                }
+            });
+
             // Pause job button
             addEvent('btn-pause-job', 'click', function () {
                 var jobId = this.getAttribute('data-job-id');
@@ -431,14 +444,34 @@
 
             var writeMode = document.getElementById('write-mode-select').value;
 
-            // Create job
-            console.log('[MLCATAI] Creating job with mode:', mode);
-            this.ajaxRequest('createJob', {
+            // Check for Google Translate mode
+            var useGoogleTranslate = false;
+            var primaryLanguageId = 0;
+            var gtCheckbox = document.getElementById('use-google-translate');
+            var primaryLangInput = document.getElementById('primary-language-id');
+
+            if (gtCheckbox && gtCheckbox.checked && primaryLangInput) {
+                useGoogleTranslate = true;
+                primaryLanguageId = parseInt(primaryLangInput.value, 10);
+            }
+
+            // Build request data
+            var requestData = {
                 category_ids: categoryIds,
                 language_ids: languageIds,
                 fields: fields,
                 write_mode: writeMode
-            }, function (response) {
+            };
+
+            // Add GT parameters if enabled
+            if (useGoogleTranslate) {
+                requestData.use_google_translate = 1;
+                requestData.primary_language_id = primaryLanguageId;
+            }
+
+            // Create job
+            console.log('[MLCATAI] Creating job with mode:', mode, 'GT:', useGoogleTranslate);
+            this.ajaxRequest('createJob', requestData, function (response) {
                 console.log('[MLCATAI] createJob response, mode is:', mode);
                 if (response.success) {
                     self.currentJobId = response.job_id;
@@ -591,6 +624,31 @@
                 } else {
                     var errorMsg = (response && response.message) ? response.message : 'Unknown error';
                     alert('✗ API connection failed:\n\n' + errorMsg);
+                }
+            });
+        },
+
+        testGoogleApiConnection: function () {
+            var self = this;
+            var btn = document.getElementById('btn-test-google-api');
+            if (!btn) return;
+
+            var originalHtml = btn.innerHTML;
+
+            btn.innerHTML = '<i class="icon icon-spinner icon-spin"></i> Testing...';
+            btn.disabled = true;
+
+            this.ajaxRequest('testGoogleApi', {}, function (response) {
+                // Always reset button state first
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+
+                // Show result message
+                if (response && response.success) {
+                    alert('✓ Google Translate API connection successful!');
+                } else {
+                    var errorMsg = (response && response.message) ? response.message : 'Unknown error';
+                    alert('✗ Google Translate API connection failed:\n\n' + errorMsg);
                 }
             });
         },

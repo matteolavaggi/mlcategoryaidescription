@@ -799,6 +799,11 @@ Requisiti:
             'run_stats' => MlCategoryAiRunStats::getRecentRuns(10),
             'run_stats_aggregate' => MlCategoryAiRunStats::getAggregateStats(),
             'has_meta_keywords' => MlCategoryAiGenerator::hasMetaKeywordsSupport(),
+            // Google Translate settings
+            'google_translate_enabled' => (bool) Configuration::get(self::CONFIG_GOOGLE_TRANSLATE_ENABLED),
+            'google_translate_configured' => !empty(Configuration::get(self::CONFIG_GOOGLE_TRANSLATE_API_KEY)),
+            'primary_language_id' => (int) Configuration::get(self::CONFIG_PRIMARY_LANGUAGE),
+            'translate_language_ids' => json_decode(Configuration::get(self::CONFIG_TRANSLATE_LANGUAGES), true) ?: [],
         ]);
 
         // Add header info panel FIRST

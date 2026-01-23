@@ -195,6 +195,60 @@
 						<span id="help-background" style="display:none;">{l s='Job will be queued. Configure cron to process automatically in background.' mod='mlcategoryaidescription'}</span>
 					</p>
 				</div>
+
+				{* Google Translate Mode *}
+				{if isset($google_translate_enabled) && $google_translate_enabled && $google_translate_configured}
+				<div class="form-group" id="google-translate-mode-group">
+					<label class="control-label">
+						{l s='Translation Mode' mod='mlcategoryaidescription'}
+						<span class="badge badge-success" style="margin-left: 5px;">
+							<i class="icon icon-globe"></i> {l s='Google Translate' mod='mlcategoryaidescription'}
+						</span>
+					</label>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" id="use-google-translate" value="1" checked>
+							<strong>{l s='Use Google Translate' mod='mlcategoryaidescription'}</strong>
+						</label>
+					</div>
+					<p class="help-block">
+						{l s='Generate content in primary language using OpenAI, then translate to other languages using Google Translate API. This is faster and more cost-effective.' mod='mlcategoryaidescription'}
+					</p>
+					
+					<div id="google-translate-details" class="well well-sm" style="margin-top: 10px;">
+						<div class="row">
+							<div class="col-xs-6">
+								<strong>{l s='Primary Language:' mod='mlcategoryaidescription'}</strong><br>
+								{foreach from=$languages item=lang}
+									{if $lang.id_lang == $primary_language_id}
+										<span class="label label-primary">{$lang.name|escape:'htmlall':'UTF-8'}</span>
+									{/if}
+								{/foreach}
+								<small class="text-muted">({l s='OpenAI generation' mod='mlcategoryaidescription'})</small>
+							</div>
+							<div class="col-xs-6">
+								<strong>{l s='Translate to:' mod='mlcategoryaidescription'}</strong><br>
+								{assign var="translate_count" value=0}
+								{foreach from=$languages item=lang}
+									{if in_array($lang.id_lang, $translate_language_ids)}
+										<span class="label label-info">{$lang.name|escape:'htmlall':'UTF-8'}</span>
+										{assign var="translate_count" value=$translate_count+1}
+									{/if}
+								{/foreach}
+								{if $translate_count == 0}
+									<span class="text-warning">{l s='No languages configured' mod='mlcategoryaidescription'}</span>
+								{/if}
+							</div>
+						</div>
+						<input type="hidden" id="primary-language-id" value="{$primary_language_id|escape:'htmlall':'UTF-8'}">
+					</div>
+				</div>
+				{elseif isset($google_translate_enabled) && $google_translate_enabled && !$google_translate_configured}
+				<div class="alert alert-warning" style="margin-top: 10px;">
+					<i class="icon icon-exclamation-triangle"></i>
+					{l s='Google Translate is enabled but API key is not configured. Please configure it in the Translation Settings section below.' mod='mlcategoryaidescription'}
+				</div>
+				{/if}
 			</div>
 		</div>
 
@@ -206,8 +260,13 @@
 				<i class="icon icon-clock-o"></i> {l s='Queue for Background' mod='mlcategoryaidescription'}
 			</button>
 			<button type="button" class="btn btn-default" id="btn-test-api">
-				<i class="icon icon-plug"></i> {l s='Test API Connection' mod='mlcategoryaidescription'}
+				<i class="icon icon-plug"></i> {l s='Test OpenAI Connection' mod='mlcategoryaidescription'}
 			</button>
+			{if isset($google_translate_enabled) && $google_translate_enabled && $google_translate_configured}
+			<button type="button" class="btn btn-default" id="btn-test-google-api">
+				<i class="icon icon-globe"></i> {l s='Test Google Translate' mod='mlcategoryaidescription'}
+			</button>
+			{/if}
 		</div>
 	</div>
 
