@@ -143,13 +143,26 @@ https://yourshop.com/module/mlcategoryaidescription/cron?token=abc123...
 
 **Setup options:**
 
-1. **Server CRON job** (recommended):
+1. **Server CRON job** (recommended for regular jobs):
    ```bash
    */5 * * * * curl -s "YOUR_CRON_URL" > /dev/null
    ```
-   This runs every 5 minutes.
+   This runs every 5 minutes. Each web call runs for up to 5 minutes.
 
-2. **External CRON service**: Use services like cron-job.org or EasyCron with your CRON URL.
+2. **CLI mode** (recommended for large jobs - unlimited execution):
+   ```bash
+   php /path/to/prestashop/modules/mlcategoryaidescription/cron-cli.php
+   ```
+   This runs until the job completes with no timeout.
+
+3. **External CRON service**: Use services like cron-job.org or EasyCron with your CRON URL.
+
+#### Lock Mechanism
+
+The cron system includes a lock mechanism to prevent concurrent executions:
+- If a cron is already running, new calls will skip and report the running process
+- This prevents duplicate processing and API rate limit issues
+- Lock is automatically released when the job finishes or fails
 
 ---
 

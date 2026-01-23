@@ -12,10 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Generation tracking display** in category selector
   - Shows last generation date (dd/mm format) next to each category name
-  - Visual indicator: ● = full (4 fields), ◐ = partial generation
+  - Type indicator: "full" (4 fields) or "partial" generation
   - Red styling for quick visibility
-  - Hover tooltip shows generation type
-- Uses existing `mlcategoryai_generation_log` table (no new tables)
+- **Cron lock mechanism** - prevents concurrent cron executions
+- **CLI cron script** (`cron-cli.php`) for unlimited execution time
+- CLI command shown in admin interface for large jobs
 
 ### Fixed
 - **Google Translate API key placement** - moved from POST body to URL query parameter (API requirement)
@@ -23,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Category tree max-height increased to 500px with scroll
 
 ### Changed
+- **Cron timeout**: Web mode now runs for 5 minutes (was 55 seconds)
+- Cron outputs progress every 10 seconds with processing rate
+- Preserve `generation_log` and `run_stats` tables on uninstall (historical data)
 - Cleaned up debug console.log statements from JavaScript
 
 ## [1.6.0] - 2026-01-23

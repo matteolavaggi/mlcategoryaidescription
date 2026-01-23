@@ -156,8 +156,15 @@
 					<li>{l s='Create a job using the form below' mod='mlcategoryaidescription'}</li>
 					<li>{l s='Choose "Background (Cron)" processing mode' mod='mlcategoryaidescription'}</li>
 					<li>{l s='The cron will automatically process pending jobs' mod='mlcategoryaidescription'}</li>
-					<li>{l s='Each cron run processes for ~55 seconds' mod='mlcategoryaidescription'}</li>
+					<li>{l s='Web mode: 5 minute timeout per run. CLI mode: unlimited.' mod='mlcategoryaidescription'}</li>
+					<li>{l s='Lock mechanism prevents concurrent executions' mod='mlcategoryaidescription'}</li>
 				</ol>
+
+				<div class="alert alert-success" style="font-size: 12px;">
+					<strong>{l s='CLI Mode (Recommended for large jobs):' mod='mlcategoryaidescription'}</strong><br>
+					<code style="display: block; margin-top: 5px; background: #f5f5f5; padding: 5px; font-size: 11px;">php {$smarty.const._PS_ROOT_DIR_|escape:'htmlall':'UTF-8'}/modules/mlcategoryaidescription/cron-cli.php</code>
+					<small class="text-muted">{l s='No timeout, runs until job completes.' mod='mlcategoryaidescription'}</small>
+				</div>
 
 				<div class="alert alert-info" style="font-size: 12px;">
 					<strong>{l s='Tip:' mod='mlcategoryaidescription'}</strong>
