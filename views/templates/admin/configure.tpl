@@ -99,8 +99,8 @@
 										<input type="checkbox" class="category-checkbox" value="{$category.id_category|escape:'htmlall':'UTF-8'}" data-name="{$category.name|escape:'htmlall':'UTF-8'|lower}">
 										<span class="mlcatai-tree-name">{$category.name|escape:'htmlall':'UTF-8'}</span>
 										{if isset($category.last_generated) && $category.last_generated}
-										<span class="mlcatai-gen-info" title="{$category.generation_type|escape:'htmlall':'UTF-8'} generation">
-											{$category.last_generated|escape:'htmlall':'UTF-8'} {if $category.generation_type == 'full'}●{else}◐{/if}
+										<span class="mlcatai-gen-info" title="{if $category.generation_type == 'full'}{l s='Full generation (all fields)' mod='mlcategoryaidescription'}{else}{l s='Partial generation' mod='mlcategoryaidescription'}{/if}">
+											{$category.last_generated|escape:'htmlall':'UTF-8'} {if $category.generation_type == 'full'}full{else}partial{/if}
 										</span>
 										{/if}
 									</label>

@@ -32,9 +32,14 @@ class MlcategoryaidescriptionCronModuleFrontController extends ModuleFrontContro
     public $display_footer = false;
 
     /**
-     * @var int Max execution time in seconds
+     * @var string Lock file path
      */
-    const MAX_EXECUTION_TIME = 55;
+    private $lockFile;
+
+    /**
+     * @var resource|null Lock file handle
+     */
+    private $lockHandle;
 
     /**
      * Initialize controller
@@ -45,6 +50,81 @@ class MlcategoryaidescriptionCronModuleFrontController extends ModuleFrontContro
 
         // Set plain text content type
         header('Content-Type: text/plain');
+
+        // Set lock file path
+        $this->lockFile = _PS_MODULE_DIR_ . 'mlcategoryaidescription/logs/cron.lock';
+    }
+
+    /**
+     * Check if running from CLI
+     *
+     * @return bool
+     */
+    private function isCli()
+    {
+        return php_sapi_name() === 'cli' || defined('STDIN');
+    }
+
+    /**
+     * Acquire exclusive lock to prevent concurrent runs
+     *
+     * @return bool True if lock acquired, false if another process is running
+     */
+    private function acquireLock()
+    {
+        $this->lockHandle = fopen($this->lockFile, 'c');
+        if (!$this->lockHandle) {
+            return false;
+        }
+
+        // Try to acquire exclusive non-blocking lock
+        if (!flock($this->lockHandle, LOCK_EX | LOCK_NB)) {
+            fclose($this->lockHandle);
+            $this->lockHandle = null;
+
+            return false;
+        }
+
+        // Write PID and timestamp to lock file
+        ftruncate($this->lockHandle, 0);
+        fwrite($this->lockHandle, json_encode([
+            'pid' => getmypid(),
+            'started_at' => date('Y-m-d H:i:s'),
+        ]));
+        fflush($this->lockHandle);
+
+        return true;
+    }
+
+    /**
+     * Release lock
+     */
+    public function releaseLock()
+    {
+        if ($this->lockHandle) {
+            flock($this->lockHandle, LOCK_UN);
+            fclose($this->lockHandle);
+            $this->lockHandle = null;
+        }
+    }
+
+    /**
+     * Get info about currently running process (if any)
+     *
+     * @return array|null
+     */
+    private function getLockInfo()
+    {
+        if (!file_exists($this->lockFile)) {
+            return null;
+        }
+
+        $content = file_get_contents($this->lockFile);
+        if (empty($content)) {
+            return null;
+        }
+
+        return json_decode($content, true);
     }
 
     /**
@@ -66,6 +146,32 @@ class MlcategoryaidescriptionCronModuleFrontController extends ModuleFrontContro
             exit('Invalid token');
         }
 
+        // Try to acquire lock
+        if (!$this->acquireLock()) {
+            $lockInfo = $this->getLockInfo();
+            echo "Another cron process is already running.\n";
+            if ($lockInfo) {
+                echo 'PID: ' . ($lockInfo['pid'] ?? 'unknown') . "\n";
+                echo 'Started: ' . ($lockInfo['started_at'] ?? 'unknown') . "\n";
+            }
+            exit;
+        }
+
+        // Register shutdown function to release lock
+        register_shutdown_function([$this, 'releaseLock']);
+
+        // Set unlimited execution time for CLI mode, 5 min for web
+        if ($this->isCli()) {
+            set_time_limit(0);
+            ini_set('max_execution_time', '0');
+            echo "Running in CLI mode (no timeout)\n\n";
+        } else {
+            // For web requests, set a reasonable timeout (5 minutes)
+            set_time_limit(300);
+            ini_set('max_execution_time', '300');
+            echo "Running in web mode (5 min timeout)\n\n";
+        }
+
         require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiJobQueue.php';
 
         $jobQueue = new MlCategoryAiJobQueue();
@@ -81,7 +187,9 @@ class MlcategoryaidescriptionCronModuleFrontController extends ModuleFrontContro
         }
 
         if (!$job) {
-            exit('No pending jobs');
+            echo "No pending jobs\n";
+            $this->releaseLock();
+            exit;
         }
 
         echo 'Processing job #' . $job['id_job'] . "\n";
@@ -96,16 +204,10 @@ class MlcategoryaidescriptionCronModuleFrontController extends ModuleFrontContro
 
         $totalProcessed = 0;
         $totalFailed = 0;
+        $lastProgressOutput = 0;
 
-        // Process batches until timeout or completion
+        // Process batches until completion
         while (true) {
-            // Check execution time
-            $elapsedTime = time() - $startTime;
-            if ($elapsedTime >= self::MAX_EXECUTION_TIME) {
-                echo "\nTimeout reached after " . $elapsedTime . " seconds\n";
-                break;
-            }
-
             $result = $jobQueue->processNextBatch($job['id_job'], $this->module, $batchSize);
 
             if (!$result['success']) {
@@ -113,7 +215,8 @@ class MlcategoryaidescriptionCronModuleFrontController extends ModuleFrontContro
                 break;
             }
 
-            $totalProcessed += count($result['batch_results'] ?? []);
+            $batchCount = count($result['batch_results'] ?? []);
+            $totalProcessed += $batchCount;
 
             // Count failures in this batch
             $batchFailed = 0;
@@ -126,27 +229,47 @@ class MlcategoryaidescriptionCronModuleFrontController extends ModuleFrontContro
             }
             $totalFailed += $batchFailed;
 
-            echo sprintf(
-                "Batch processed: %d items (Progress: %.1f%%)\n",
-                count($result['batch_results'] ?? []),
-                $result['progress_percent'] ?? 0
-            );
+            // Output progress every 10 seconds or every 100 items
+            $now = time();
+            if ($now - $lastProgressOutput >= 10 || $totalProcessed % 100 < $batchCount) {
+                $elapsed = $now - $startTime;
+                $rate = $elapsed > 0 ? round($totalProcessed / $elapsed, 1) : 0;
+                echo sprintf(
+                    "[%s] Progress: %.1f%% (%d/%d) - Rate: %.1f items/sec\n",
+                    date('H:i:s'),
+                    $result['progress_percent'] ?? 0,
+                    $result['processed'] ?? 0,
+                    $job['total_items'],
+                    $rate
+                );
+                $lastProgressOutput = $now;
+
+                // Flush output buffer for real-time monitoring
+                if (ob_get_level() > 0) {
+                    ob_flush();
+                }
+                flush();
+            }
 
             if ($result['completed']) {
-                echo "\nJob completed!\n";
+                echo "\n=== Job completed! ===\n";
                 echo 'Total processed: ' . $result['processed'] . "\n";
                 echo 'Total failed: ' . $result['failed'] . "\n";
                 break;
             }
 
-            // Small delay between batches
+            // Small delay between batches to avoid hammering the API
             usleep(100000); // 0.1 seconds
         }
 
+        $elapsedTime = time() - $startTime;
         echo "\n--- Cron Summary ---\n";
         echo 'Items processed this run: ' . $totalProcessed . "\n";
         echo 'Failures this run: ' . $totalFailed . "\n";
-        echo 'Execution time: ' . (time() - $startTime) . " seconds\n";
+        echo 'Execution time: ' . $elapsedTime . " seconds\n";
+        echo 'Average rate: ' . ($elapsedTime > 0 ? round($totalProcessed / $elapsedTime, 2) : 0) . " items/sec\n";
+
+        $this->releaseLock();
 
         // Exit to prevent Smarty template rendering
         exit;
