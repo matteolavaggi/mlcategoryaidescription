@@ -86,6 +86,10 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
                     $this->handleTestConnection();
                     break;
 
+                case 'testGoogleApi':
+                    $this->handleTestGoogleApi();
+                    break;
+
                 case 'createJob':
                     $this->handleCreateJob();
                     break;
@@ -322,6 +326,22 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
     }
 
     /**
+     * Test Google Translate API connection
+     */
+    protected function handleTestGoogleApi()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiTranslator.php';
+
+        $translator = MlCategoryAiTranslator::createFromConfig($this->module);
+        $result = $translator->validateApiKey();
+
+        $this->jsonResponse([
+            'success' => $result,
+            'message' => $result ? 'Google Translate API connection successful' : $translator->getLastError(),
+        ]);
+    }
+
+    /**
      * Create a new batch job
      */
     protected function handleCreateJob()
@@ -335,6 +355,10 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
         $languageIds = Tools::getValue('language_ids');
         $fieldsToGenerate = Tools::getValue('fields');
         $writeMode = Tools::getValue('write_mode', 'fill_missing');
+
+        // Google Translate options
+        $useGoogleTranslate = (bool) Tools::getValue('use_google_translate', false);
+        $primaryLanguageId = (int) Tools::getValue('primary_language_id', 0);
 
         if (empty($categoryIds) || !is_array($categoryIds)) {
             $this->jsonResponse(['success' => false, 'error' => 'No categories selected']);
@@ -354,12 +378,46 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
             return;
         }
 
+        // Build GT options if enabled
+        $gtOptions = [];
+        if ($useGoogleTranslate && $primaryLanguageId > 0) {
+            // Get translate languages from config (already saved via settings form)
+            $translateLanguageIds = json_decode(
+                Configuration::get(Mlcategoryaidescription::CONFIG_TRANSLATE_LANGUAGES),
+                true
+            ) ?: [];
+
+            // Filter out primary language from translate targets
+            $translateLanguageIds = array_filter($translateLanguageIds, function ($langId) use ($primaryLanguageId) {
+                return (int) $langId !== $primaryLanguageId;
+            });
+
+            if (empty($translateLanguageIds)) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'error' => 'Google Translate enabled but no target languages configured. Please configure target languages in Translation Settings.',
+                ]);
+
+                return;
+            }
+
+            $gtOptions = [
+                'use_google_translate' => true,
+                'primary_language_id' => $primaryLanguageId,
+                'translate_language_ids' => array_values($translateLanguageIds),
+            ];
+
+            // Override language_ids to only include primary + translate targets
+            $languageIds = array_merge([$primaryLanguageId], $translateLanguageIds);
+        }
+
         $jobQueue = new MlCategoryAiJobQueue();
         $jobId = $jobQueue->createJob(
             array_map('intval', $categoryIds),
             array_map('intval', $languageIds),
             $fieldsToGenerate,
-            $writeMode
+            $writeMode,
+            $gtOptions
         );
 
         $elapsed = round((microtime(true) - $startTime) * 1000);
