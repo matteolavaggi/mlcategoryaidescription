@@ -514,10 +514,12 @@
                     if (response.batch_results) {
                         for (var i = 0; i < response.batch_results.length; i++) {
                             var result = response.batch_results[i];
+                            // v1.7.0: items now have 'fields' array instead of 'field_type'
+                            var fieldInfo = result.fields ? result.fields.join(', ') : (result.field_type || 'all fields');
                             if (result.skipped) {
-                                self.log('⏭ Skipped: Category ' + result.id_category + ', Lang ' + result.id_lang + ', ' + result.field_type);
+                                self.log('⏭ Skipped: Category ' + result.id_category + ', Lang ' + result.id_lang + ' (' + fieldInfo + ')');
                             } else if (result.success) {
-                                self.log('✓ Generated: Category ' + result.id_category + ', Lang ' + result.id_lang + ', ' + result.field_type);
+                                self.log('✓ Generated: Category ' + result.id_category + ', Lang ' + result.id_lang + ' (' + fieldInfo + ')');
                             } else {
                                 self.log('✗ Error: Category ' + result.id_category + ' - ' + result.error);
                             }
