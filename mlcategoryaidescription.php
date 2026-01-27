@@ -97,7 +97,7 @@ class Mlcategoryaidescription extends Module
     {
         $this->name = 'mlcategoryaidescription';
         $this->tab = 'administration';
-        $this->version = '1.7.0';
+        $this->version = '1.8.0';
         $this->author = '2win.agency';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -1018,7 +1018,8 @@ Requisiti:
     }
 
     /**
-     * Get all pending/running/paused jobs
+     * Get all pending/running/paused/failed jobs
+     * v1.7.1: Include failed jobs so they can be managed from UX
      *
      * @return array
      */
@@ -1026,7 +1027,7 @@ Requisiti:
     {
         $results = Db::getInstance()->executeS(
             'SELECT * FROM `' . _DB_PREFIX_ . 'mlcategoryai_job_queue`
-            WHERE `status` IN ("pending", "running", "paused")
+            WHERE `status` IN ("pending", "running", "paused", "failed")
             AND `id_shop` = ' . (int) $this->context->shop->id . '
             ORDER BY `created_at` DESC'
         );

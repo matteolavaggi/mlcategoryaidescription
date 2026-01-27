@@ -138,6 +138,18 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
                     $this->handleGetJobStatus();
                     break;
 
+                case 'restartJob':
+                    $this->handleRestartJob();
+                    break;
+
+                case 'createTranslateOnlyJob':
+                    $this->handleCreateTranslateOnlyJob();
+                    break;
+
+                case 'countMissingTranslations':
+                    $this->handleCountMissingTranslations();
+                    break;
+
                 default:
                     $this->jsonResponse(['success' => false, 'error' => 'Unknown action: ' . $action]);
             }
@@ -241,6 +253,234 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
         $this->jsonResponse([
             'success' => true,
             'jobs' => $jobs,
+        ]);
+    }
+
+    /**
+     * Restart a failed job from where it stopped
+     * v1.7.1: New feature to resume failed jobs
+     */
+    protected function handleRestartJob()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiJobQueue.php';
+
+        $idJob = (int) Tools::getValue('job_id');
+
+        if (!$idJob) {
+            $this->jsonResponse(['success' => false, 'message' => 'Invalid job ID']);
+
+            return;
+        }
+
+        $jobQueue = new MlCategoryAiJobQueue();
+        $job = $jobQueue->getJob($idJob);
+
+        if (!$job) {
+            $this->jsonResponse(['success' => false, 'message' => 'Job not found']);
+
+            return;
+        }
+
+        // Only allow restarting failed jobs
+        if ($job['status'] !== 'failed') {
+            $this->jsonResponse(['success' => false, 'message' => 'Only failed jobs can be restarted']);
+
+            return;
+        }
+
+        // Reset status to pending (keeps current_position to resume from where it stopped)
+        $result = $jobQueue->updateJobStatus($idJob, MlCategoryAiJobQueue::STATUS_PENDING);
+
+        // Clear error log
+        if ($result) {
+            $jobQueue->updateJob($idJob, ['error_log' => null]);
+        }
+
+        $this->jsonResponse([
+            'success' => $result,
+            'message' => $result ? 'Job restarted' : 'Failed to restart job',
+        ]);
+    }
+
+    /**
+     * Count categories that need translation only (have primary content but missing translations)
+     * v1.8.0: Preview for "Translate Missing" feature
+     *
+     * Uses module config as defaults if parameters not provided
+     */
+    protected function handleCountMissingTranslations()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiJobQueue.php';
+
+        $primaryLangId = (int) Tools::getValue('primary_lang_id');
+        $targetLangIds = Tools::getValue('target_lang_ids');
+        $fields = Tools::getValue('fields');
+
+        // v1.8.0: Use module config as defaults
+        if (!$primaryLangId) {
+            $primaryLangId = (int) Configuration::get(Mlcategoryaidescription::CONFIG_PRIMARY_LANGUAGE);
+        }
+
+        if (empty($targetLangIds)) {
+            $targetLangIds = json_decode(Configuration::get(Mlcategoryaidescription::CONFIG_TRANSLATE_LANGUAGES), true) ?: [];
+        }
+
+        if (!$primaryLangId) {
+            $this->jsonResponse([
+                'success' => false,
+                'error' => 'Primary language not configured. Please set it in Translation Settings.',
+            ]);
+
+            return;
+        }
+
+        if (empty($targetLangIds)) {
+            $this->jsonResponse([
+                'success' => false,
+                'error' => 'Target languages not configured. Please set them in Translation Settings.',
+            ]);
+
+            return;
+        }
+
+        if (empty($fields)) {
+            $fields = json_decode(Configuration::get(Mlcategoryaidescription::CONFIG_ENABLED_FIELDS), true)
+                ?: ['description', 'meta_title', 'meta_description'];
+        }
+
+        // Ensure arrays
+        if (!is_array($targetLangIds)) {
+            $targetLangIds = explode(',', $targetLangIds);
+        }
+        if (!is_array($fields)) {
+            $fields = explode(',', $fields);
+        }
+
+        // Filter out primary language from targets
+        $targetLangIds = array_filter($targetLangIds, function ($id) use ($primaryLangId) {
+            return (int) $id !== $primaryLangId;
+        });
+
+        $jobQueue = new MlCategoryAiJobQueue();
+        $categoryIds = $jobQueue->findCategoriesNeedingTranslation($primaryLangId, array_values($targetLangIds), $fields);
+
+        // Get language info for better feedback
+        $langInfo = [];
+        foreach ($targetLangIds as $langId) {
+            $lang = new Language((int) $langId);
+            if (Validate::isLoadedObject($lang)) {
+                $langInfo[] = $lang->iso_code . ' (ID:' . $langId . ')';
+            }
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'count' => count($categoryIds),
+            'category_ids' => $categoryIds,
+            'primary_lang_id' => $primaryLangId,
+            'target_lang_ids' => array_values($targetLangIds),
+            'target_languages' => implode(', ', $langInfo),
+            'fields' => $fields,
+            'message' => count($categoryIds) . ' categories need translation to ' . implode(', ', $langInfo),
+        ]);
+    }
+
+    /**
+     * Create a translate-only job for categories with missing translations
+     * v1.8.0: Recovery feature for interrupted jobs
+     *
+     * Uses module config as defaults if parameters not provided:
+     * - primary_lang_id: defaults to MLCATEGORYAI_PRIMARY_LANGUAGE config
+     * - target_lang_ids: defaults to MLCATEGORYAI_TRANSLATE_LANGUAGES config
+     */
+    protected function handleCreateTranslateOnlyJob()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiJobQueue.php';
+
+        $primaryLangId = (int) Tools::getValue('primary_lang_id');
+        $targetLangIds = Tools::getValue('target_lang_ids');
+        $fields = Tools::getValue('fields');
+
+        // v1.8.0: Use module config as defaults (to prevent wrong ID assumptions)
+        if (!$primaryLangId) {
+            $primaryLangId = (int) Configuration::get(Mlcategoryaidescription::CONFIG_PRIMARY_LANGUAGE);
+        }
+
+        if (empty($targetLangIds)) {
+            $targetLangIds = json_decode(Configuration::get(Mlcategoryaidescription::CONFIG_TRANSLATE_LANGUAGES), true) ?: [];
+        }
+
+        // Validate we have the required values
+        if (!$primaryLangId) {
+            $this->jsonResponse([
+                'success' => false,
+                'error' => 'Primary language not configured. Please set it in Translation Settings.',
+            ]);
+
+            return;
+        }
+
+        if (empty($targetLangIds)) {
+            $this->jsonResponse([
+                'success' => false,
+                'error' => 'Target languages not configured. Please set them in Translation Settings.',
+            ]);
+
+            return;
+        }
+
+        if (empty($fields)) {
+            $fields = json_decode(Configuration::get(Mlcategoryaidescription::CONFIG_ENABLED_FIELDS), true)
+                ?: ['description', 'meta_title', 'meta_description'];
+        }
+
+        // Ensure arrays
+        if (!is_array($targetLangIds)) {
+            $targetLangIds = explode(',', $targetLangIds);
+        }
+        if (!is_array($fields)) {
+            $fields = explode(',', $fields);
+        }
+
+        // Filter out primary language from targets
+        $targetLangIds = array_filter($targetLangIds, function ($id) use ($primaryLangId) {
+            return (int) $id !== $primaryLangId;
+        });
+
+        $jobQueue = new MlCategoryAiJobQueue();
+        $jobId = $jobQueue->createTranslateOnlyJob($primaryLangId, array_values($targetLangIds), $fields, 'fill_missing');
+
+        if (!$jobId) {
+            $this->jsonResponse([
+                'success' => false,
+                'error' => 'No categories found needing translation, or failed to create job',
+            ]);
+
+            return;
+        }
+
+        $job = $jobQueue->getJob($jobId);
+
+        // Get language names for better feedback
+        $langNames = [];
+        foreach ($targetLangIds as $langId) {
+            $lang = new Language((int) $langId);
+            if (Validate::isLoadedObject($lang)) {
+                $langNames[] = $lang->iso_code;
+            }
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'job_id' => $jobId,
+            'total_items' => $job['total_items'],
+            'category_count' => count($job['category_ids']),
+            'target_languages' => implode(', ', $langNames),
+            'message' => sprintf(
+                'Created translate-only job for %d categories (%s)',
+                count($job['category_ids']),
+                implode(', ', $langNames)
+            ),
         ]);
     }
 

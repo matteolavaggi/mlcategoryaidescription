@@ -7,6 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-01-27
+
+### Added
+- **Translate Missing Only** - New recovery feature for interrupted jobs
+  - Finds categories with primary language content but missing translations
+  - Creates translate-only jobs (no OpenAI API calls needed)
+  - AJAX actions: `countMissingTranslations`, `createTranslateOnlyJob`
+  - Perfect for recovering from jobs killed mid-process
+
+- **Smart Fill-Missing Detection**
+  - In "fill_missing" mode with Google Translate enabled
+  - Checks if primary language content already exists
+  - Skips OpenAI generation if content exists, goes directly to translation
+  - Saves API costs and prevents duplicate content generation
+
+- **Language ID from Module Config** - AJAX handlers now use module config as defaults
+  - `handleCountMissingTranslations()` reads from `MLCATEGORYAI_PRIMARY_LANGUAGE` and `MLCATEGORYAI_TRANSLATE_LANGUAGES`
+  - `handleCreateTranslateOnlyJob()` reads from module config if parameters not provided
+  - Prevents hardcoded language ID assumptions (e.g., assuming EN=2, DE=3)
+  - Responses now include language ISO codes for clarity
+
+### Changed
+- **Per-Category Interleaved Processing** (breaking change for Google Translate mode)
+  - OLD flow: Generate ALL OpenAI → Translate ALL (two-phase)
+  - NEW flow: For each category: OpenAI → Translate → Next category
+  - **Benefit**: If process dies, you have complete categories, not partial translations
+  - Categories are now fully processed (all languages) before moving to the next
+
+- **Simplified Progress Calculation**
+  - Removed phase-based progress (60% OpenAI + 40% Translate)
+  - Now uses simple linear progress across all items
+
+- **categoryHasPrimaryContent() method** - Now queries database directly
+  - Fixed PrestaShop language fallback issue (Category object shows default language content for missing languages)
+  - Ensures accurate detection of missing translations
+
+### Removed
+- Two-phase architecture (phase transitions that could leave jobs stuck)
+
+### Fixed
+- Categories left with primary content but no translations after interrupted jobs
+- Language ID mismatch when using hardcoded assumptions vs actual database IDs
+
+## [1.7.2] - 2026-01-26
+
+### Added
+- **Auto-refresh job status** - Job queue table updates every 10 seconds via AJAX
+  - Real-time progress updates without page reload
+  - Automatic detection of new, updated, or deleted jobs
+- **Restart failed jobs** - New "Resume from failure point" button for failed jobs
+  - Resets job status to pending while keeping current position
+  - Allows resuming processing from where it stopped
+- **Event delegation** for job queue table buttons
+  - Properly handles dynamically rendered buttons
+
+### Changed
+- Job queue buttons now work via event delegation (more reliable)
+- Status badges and progress bars update in real-time
+
+## [1.7.1] - 2026-01-26
+
+### Fixed
+- **Orphan process handling** - Processing now stops when job is deleted or marked as failed
+  - Added `STATUS_FAILED` check in `processNextBatch()` to terminate orphan processes
+  - Previously, running PHP processes would continue after job deletion/failure
+
+### Changed
+- **UX/Queue sync** - Failed jobs now appear in job queue UX with delete option
+  - `getAllPendingJobs()` and `getAllActiveJobs()` now include failed status
+  - Users can see and delete failed jobs from the admin interface
+
 ## [1.7.0] - 2026-01-23
 
 ### Changed

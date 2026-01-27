@@ -101,6 +101,11 @@
 								title="{l s='Resume' mod='mlcategoryaidescription'}">
 								<i class="icon icon-play"></i>
 							</button>
+							{elseif $job.status == 'failed'}
+							<button type="button" class="btn btn-xs btn-info btn-restart-job" data-job-id="{$job.id_job|intval}"
+								title="{l s='Resume from failure point' mod='mlcategoryaidescription'}">
+								<i class="icon icon-refresh"></i>
+							</button>
 							{/if}
 							<button type="button" class="btn btn-xs btn-danger btn-delete-job" data-job-id="{$job.id_job|intval}"
 								title="{l s='Delete' mod='mlcategoryaidescription'}">

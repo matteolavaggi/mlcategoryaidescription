@@ -50,13 +50,16 @@
         token: null,
         currentJobId: null,
         isProcessing: false,
+        jobRefreshInterval: null,
 
         init: function () {
             this.ajaxUrl = window.mlcategoryai_ajax_url || '';
             this.token = window.mlcategoryai_token || '';
 
             this.bindEvents();
+            this.bindJobQueueEvents();
             this.checkExistingJob();
+            this.startJobStatusRefresh();
         },
 
         bindEvents: function () {
@@ -603,6 +606,290 @@
                     alert('Error: ' + response.message);
                 }
             });
+        },
+
+        /**
+         * Bind events for job queue table using event delegation
+         * v1.7.1: Handles dynamically rendered buttons in job queue
+         */
+        bindJobQueueEvents: function () {
+            var self = this;
+            var table = document.getElementById('job-queue-table');
+            if (!table) return;
+
+            table.addEventListener('click', function (e) {
+                var target = e.target.closest('button');
+                if (!target) return;
+
+                var jobId = target.getAttribute('data-job-id');
+                if (!jobId) return;
+
+                if (target.classList.contains('btn-resume-browser')) {
+                    e.preventDefault();
+                    self.resumeJobInBrowser(jobId);
+                } else if (target.classList.contains('btn-pause-job')) {
+                    e.preventDefault();
+                    self.pauseJob(jobId);
+                } else if (target.classList.contains('btn-delete-job')) {
+                    e.preventDefault();
+                    if (confirm('Are you sure you want to delete this job?')) {
+                        self.deleteJob(jobId);
+                    }
+                } else if (target.classList.contains('btn-restart-job')) {
+                    e.preventDefault();
+                    if (confirm('Resume this failed job from where it stopped?')) {
+                        self.restartJob(jobId);
+                    }
+                }
+            });
+        },
+
+        /**
+         * Resume a job in the browser (similar to resumeJob but for table actions)
+         */
+        resumeJobInBrowser: function (jobId) {
+            var self = this;
+            self.currentJobId = jobId;
+            self.isProcessing = true;
+
+            // Show progress modal if exists
+            var modal = document.getElementById('generation-progress-modal');
+            if (modal) {
+                modal.style.display = 'block';
+            }
+
+            self.log('Resuming job #' + jobId + ' in browser...');
+
+            // First resume the job status
+            this.ajaxRequest('resumeJob', { job_id: jobId }, function (response) {
+                if (response.success) {
+                    self.log('Job resumed, starting processing...');
+                    self.processNextBatch();
+                } else {
+                    self.isProcessing = false;
+                    alert('Error resuming job: ' + response.message);
+                }
+            });
+        },
+
+        /**
+         * Delete a job from queue
+         */
+        deleteJob: function (jobId) {
+            var self = this;
+
+            this.ajaxRequest('deleteJob', { job_id: jobId }, function (response) {
+                if (response.success) {
+                    // Remove the row from table
+                    var row = document.querySelector('tr[data-job-id="' + jobId + '"]');
+                    if (row) {
+                        row.remove();
+                    }
+                    // Check if table is now empty
+                    var tbody = document.querySelector('#job-queue-table tbody');
+                    if (tbody && tbody.children.length === 0) {
+                        location.reload();
+                    }
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            });
+        },
+
+        /**
+         * Restart a failed job (resume from where it stopped)
+         * v1.7.1: New feature to resume failed jobs
+         */
+        restartJob: function (jobId) {
+            var self = this;
+
+            this.ajaxRequest('restartJob', { job_id: jobId }, function (response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            });
+        },
+
+        /**
+         * Start auto-refresh of job status every 10 seconds
+         * v1.7.1: New feature for real-time progress updates
+         */
+        startJobStatusRefresh: function () {
+            var self = this;
+            var table = document.getElementById('job-queue-table');
+            if (!table) return;
+
+            // Refresh every 10 seconds
+            this.jobRefreshInterval = setInterval(function () {
+                self.refreshJobStatus();
+            }, 10000);
+
+            // Also refresh immediately
+            this.refreshJobStatus();
+        },
+
+        /**
+         * Refresh job status via AJAX
+         */
+        refreshJobStatus: function () {
+            var self = this;
+
+            this.ajaxRequest('getJobStatus', {}, function (response) {
+                if (response.success && response.jobs) {
+                    self.updateJobQueueTable(response.jobs);
+                }
+            });
+        },
+
+        /**
+         * Update job queue table with fresh data
+         */
+        updateJobQueueTable: function (jobs) {
+            var tbody = document.querySelector('#job-queue-table tbody');
+            if (!tbody) return;
+
+            // Build map of current jobs by ID
+            var jobMap = {};
+            for (var i = 0; i < jobs.length; i++) {
+                jobMap[jobs[i].id_job] = jobs[i];
+            }
+
+            // Update existing rows or remove deleted ones
+            var rows = tbody.querySelectorAll('tr[data-job-id]');
+            for (var r = 0; r < rows.length; r++) {
+                var row = rows[r];
+                var jobId = row.getAttribute('data-job-id');
+                var job = jobMap[jobId];
+
+                if (!job) {
+                    // Job was deleted, remove row
+                    row.remove();
+                } else {
+                    // Update row content
+                    this.updateJobRow(row, job);
+                    delete jobMap[jobId]; // Mark as processed
+                }
+            }
+
+            // Add any new jobs
+            for (var newJobId in jobMap) {
+                if (jobMap.hasOwnProperty(newJobId)) {
+                    var newRow = this.createJobRow(jobMap[newJobId]);
+                    tbody.insertBefore(newRow, tbody.firstChild);
+                }
+            }
+
+            // Check if table is empty
+            if (tbody.children.length === 0) {
+                var container = document.querySelector('#job-queue-table').parentElement;
+                container.innerHTML = '<div class="alert alert-info"><i class="icon icon-info-circle"></i> No active or pending jobs.</div>';
+            }
+        },
+
+        /**
+         * Update a job row with new data
+         */
+        updateJobRow: function (row, job) {
+            // Update status badge
+            var statusCell = row.cells[1];
+            if (statusCell) {
+                var statusHtml = this.getStatusBadge(job);
+                statusCell.innerHTML = statusHtml;
+            }
+
+            // Update progress
+            var progressCell = row.cells[2];
+            if (progressCell) {
+                var pct = job.total_items > 0 ? Math.round((job.processed_items / job.total_items) * 100) : 0;
+                var barClass = job.status === 'completed' ? 'progress-bar-success' :
+                               job.status === 'failed' ? 'progress-bar-danger' : 'progress-bar-info';
+                progressCell.innerHTML =
+                    '<div class="progress" style="margin-bottom: 0; min-width: 100px;">' +
+                    '<div class="progress-bar ' + barClass + '" role="progressbar" style="width: ' + pct + '%"></div>' +
+                    '</div><small>' + job.processed_items + ' / ' + job.total_items + '</small>';
+            }
+
+            // Update last update time
+            var updateCell = row.cells[4];
+            if (updateCell) {
+                var stuckHtml = job.is_stuck ? '<br><span class="text-warning"><i class="icon icon-clock-o"></i> Idle</span>' : '';
+                updateCell.innerHTML = '<small>' + job.updated_at + '</small>' + stuckHtml;
+            }
+
+            // Update action buttons
+            var actionCell = row.cells[5];
+            if (actionCell) {
+                actionCell.innerHTML = this.getActionButtons(job);
+            }
+        },
+
+        /**
+         * Get status badge HTML
+         */
+        getStatusBadge: function (job) {
+            if (job.status === 'running') {
+                if (job.is_stuck) {
+                    return '<span class="label label-warning" title="No updates for 5+ minutes"><i class="icon icon-exclamation-triangle"></i> Stuck</span>';
+                }
+                return '<span class="label label-info"><i class="icon icon-spinner icon-spin"></i> Running</span>';
+            } else if (job.status === 'pending') {
+                return '<span class="label label-default">Pending</span>';
+            } else if (job.status === 'paused') {
+                return '<span class="label label-warning">Paused</span>';
+            } else if (job.status === 'completed') {
+                return '<span class="label label-success">Completed</span>';
+            } else if (job.status === 'failed') {
+                return '<span class="label label-danger">Failed</span>';
+            }
+            return '<span class="label label-default">' + job.status + '</span>';
+        },
+
+        /**
+         * Get action buttons HTML
+         */
+        getActionButtons: function (job) {
+            var html = '';
+
+            if (job.status === 'running' || job.status === 'pending') {
+                html += '<button type="button" class="btn btn-xs btn-success btn-resume-browser" data-job-id="' + job.id_job + '" title="Resume in browser"><i class="icon icon-play"></i></button> ';
+                html += '<button type="button" class="btn btn-xs btn-warning btn-pause-job" data-job-id="' + job.id_job + '" title="Pause"><i class="icon icon-pause"></i></button> ';
+            } else if (job.status === 'paused') {
+                html += '<button type="button" class="btn btn-xs btn-success btn-resume-browser" data-job-id="' + job.id_job + '" title="Resume"><i class="icon icon-play"></i></button> ';
+            } else if (job.status === 'failed') {
+                html += '<button type="button" class="btn btn-xs btn-info btn-restart-job" data-job-id="' + job.id_job + '" title="Resume from failure point"><i class="icon icon-refresh"></i></button> ';
+            }
+
+            html += '<button type="button" class="btn btn-xs btn-danger btn-delete-job" data-job-id="' + job.id_job + '" title="Delete"><i class="icon icon-trash"></i></button>';
+
+            return html;
+        },
+
+        /**
+         * Create a new job row element
+         */
+        createJobRow: function (job) {
+            var tr = document.createElement('tr');
+            tr.setAttribute('data-job-id', job.id_job);
+
+            var pct = job.total_items > 0 ? Math.round((job.processed_items / job.total_items) * 100) : 0;
+            var barClass = job.status === 'completed' ? 'progress-bar-success' :
+                           job.status === 'failed' ? 'progress-bar-danger' : 'progress-bar-info';
+
+            tr.innerHTML =
+                '<td>#' + job.id_job + '</td>' +
+                '<td>' + this.getStatusBadge(job) + '</td>' +
+                '<td>' +
+                    '<div class="progress" style="margin-bottom: 0; min-width: 100px;">' +
+                    '<div class="progress-bar ' + barClass + '" role="progressbar" style="width: ' + pct + '%"></div>' +
+                    '</div><small>' + job.processed_items + ' / ' + job.total_items + '</small>' +
+                '</td>' +
+                '<td><small>' + job.created_at + '</small></td>' +
+                '<td><small>' + job.updated_at + '</small></td>' +
+                '<td>' + this.getActionButtons(job) + '</td>';
+
+            return tr;
         },
 
         testApiConnection: function () {

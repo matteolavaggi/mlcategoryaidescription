@@ -100,7 +100,7 @@ class MlCategoryAiJobQueue
             'use_google_translate' => $useGoogleTranslate ? 1 : 0,
             'primary_language_id' => $primaryLanguageId,
             'translate_language_ids' => !empty($translateLanguageIds) ? pSQL(json_encode(array_map('intval', $translateLanguageIds))) : null,
-            'phase' => 'openai',
+            'phase' => 'processing', // v1.8.0: Simplified - no more phase transitions
             'current_translate_lang_index' => 0,
             'current_translate_position' => 0,
             'current_position' => 0,
@@ -181,14 +181,15 @@ class MlCategoryAiJobQueue
     }
 
     /**
-     * Get all active jobs (pending, running, paused)
+     * Get all active jobs (pending, running, paused, failed)
+     * v1.7.1: Include failed jobs for UX management
      *
      * @return array
      */
     public function getAllActiveJobs()
     {
         $sql = 'SELECT * FROM `' . _DB_PREFIX_ . 'mlcategoryai_job_queue`
-                WHERE `status` IN ("' . self::STATUS_PENDING . '", "' . self::STATUS_RUNNING . '", "' . self::STATUS_PAUSED . '")
+                WHERE `status` IN ("' . self::STATUS_PENDING . '", "' . self::STATUS_RUNNING . '", "' . self::STATUS_PAUSED . '", "' . self::STATUS_FAILED . '")
                 AND `id_shop` = ' . (int) $this->idShop . '
                 ORDER BY `created_at` DESC';
 
@@ -266,6 +267,17 @@ class MlCategoryAiJobQueue
             return [
                 'success' => false,
                 'error' => 'Job is paused',
+                'completed' => false,
+            ];
+        }
+
+        // v1.7.1: Check for failed status to stop orphan processes
+        if ($job['status'] === self::STATUS_FAILED) {
+            MlCategoryAiLogger::info('Job #' . $idJob . ' is failed, stopping processing');
+
+            return [
+                'success' => false,
+                'error' => 'Job has been marked as failed',
                 'completed' => false,
             ];
         }
@@ -363,29 +375,8 @@ class MlCategoryAiJobQueue
         // Check if completed
         $isCompleted = ($newPosition >= count($items));
 
-        // Handle Google Translate phase transitions
-        if ($isCompleted && !empty($job['use_google_translate'])) {
-            $currentPhase = isset($job['phase']) ? $job['phase'] : 'openai';
-
-            if ($currentPhase === 'openai' && !empty($job['translate_language_ids'])) {
-                // Transition from OpenAI phase to Translate phase
-                MlCategoryAiLogger::info('Job #' . $idJob . ' transitioning from OpenAI phase to Translate phase');
-
-                $this->updateJob($idJob, [
-                    'phase' => 'translate',
-                    'current_position' => 0,  // Reset position for new phase
-                    'current_translate_lang_index' => 0,
-                    'current_translate_position' => 0,
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
-
-                // Not fully completed yet - need to do translate phase
-                $isCompleted = false;
-            } elseif ($currentPhase === 'translate') {
-                // Translate phase complete - job is done
-                MlCategoryAiLogger::info('Job #' . $idJob . ' Translate phase COMPLETED');
-            }
-        }
+        // v1.8.0: Removed phase transitions - now using interleaved per-category flow
+        // No need to transition phases since OpenAI + Translate items are interleaved
 
         if ($isCompleted) {
             $this->updateJobStatus($idJob, self::STATUS_COMPLETED);
@@ -399,7 +390,7 @@ class MlCategoryAiJobQueue
             $this->logCompletedJobStats($job, $batchResult);
         }
 
-        // Calculate progress percent considering two phases for GT mode
+        // Calculate progress percent
         $progressPercent = $this->calculateProgressPercent($job, $newPosition, count($items));
 
         return [
@@ -416,40 +407,24 @@ class MlCategoryAiJobQueue
             'tokens_output' => $batchResult['tokens_output'],
             'batch_time_ms' => $batchResult['time_ms'],
             'parallel' => $useParallel && count($batchItems) > 1,
-            'phase' => isset($job['phase']) ? $job['phase'] : 'openai',
+            'phase' => isset($job['phase']) ? $job['phase'] : 'processing',
         ];
     }
 
     /**
-     * Calculate progress percentage, considering GT two-phase processing
+     * Calculate progress percentage
+     * v1.8.0: Simplified - no longer uses phase-based calculation
      *
      * @param array $job Job data
      * @param int $currentPosition Current position in items list
-     * @param int $totalItems Total items in current phase
+     * @param int $totalItems Total items to process
      *
      * @return float Progress percentage
      */
     protected function calculateProgressPercent($job, $currentPosition, $totalItems)
     {
-        if (!$job['use_google_translate']) {
-            // Simple calculation for non-GT jobs
-            return $totalItems > 0 ? round(($currentPosition / $totalItems) * 100, 1) : 0;
-        }
-
-        $phase = isset($job['phase']) ? $job['phase'] : 'openai';
-
-        // Two-phase calculation: OpenAI = 60%, Translate = 40%
-        if ($phase === 'openai') {
-            $phaseProgress = $totalItems > 0 ? ($currentPosition / $totalItems) : 0;
-
-            return round($phaseProgress * 60, 1);
-        } elseif ($phase === 'translate') {
-            $phaseProgress = $totalItems > 0 ? ($currentPosition / $totalItems) : 0;
-
-            return round(60 + ($phaseProgress * 40), 1);
-        }
-
-        return 100;  // completed
+        // v1.8.0: Simple linear progress (interleaved processing)
+        return $totalItems > 0 ? round(($currentPosition / $totalItems) * 100, 1) : 0;
     }
 
     /**
@@ -536,10 +511,12 @@ class MlCategoryAiJobQueue
 
     /**
      * Build items list for Google Translate two-phase processing
-     * v1.7.0: One item per category/language (all fields bundled)
+     * v1.8.0: Per-category interleaved flow - OpenAI then Translate for each category
      *
-     * Phase 1 (openai): Generate all fields for primary language only (1 item per category)
-     * Phase 2 (translate): Translate all fields to target languages (1 item per category/lang)
+     * This ensures a category is fully processed (all languages) before moving to the next.
+     * If process dies, we have complete categories, not partial translations.
+     *
+     * Structure: [cat1_openai, cat1_translate_en, cat1_translate_de, cat2_openai, cat2_translate_en, ...]
      *
      * @param array $job
      *
@@ -550,12 +527,46 @@ class MlCategoryAiJobQueue
         $items = [];
         $primaryLangId = (int) $job['primary_language_id'];
         $translateLangIds = $job['translate_language_ids'] ?: [];
-        $phase = isset($job['phase']) ? $job['phase'] : 'openai';
         $fields = $job['fields_to_generate'];
+        $writeMode = isset($job['write_mode']) ? $job['write_mode'] : 'overwrite';
+        $phase = isset($job['phase']) ? $job['phase'] : 'processing';
 
-        if ($phase === 'openai') {
-            // Phase 1: OpenAI for primary language (one item per category, all fields bundled)
+        // v1.8.0: translate_only phase - skip OpenAI, only add translation items
+        if ($phase === 'translate_only') {
             foreach ($job['category_ids'] as $idCategory) {
+                foreach ($translateLangIds as $targetLangId) {
+                    // In translate_only mode, check if target needs translation
+                    $needsTranslate = true;
+                    if ($writeMode === 'fill_missing') {
+                        $needsTranslate = !$this->categoryHasPrimaryContent($idCategory, (int) $targetLangId, $fields);
+                    }
+
+                    if ($needsTranslate) {
+                        $items[] = [
+                            'id_category' => (int) $idCategory,
+                            'id_lang' => (int) $targetLangId,
+                            'fields' => $fields,
+                            'source' => 'google_translate',
+                            'source_lang_id' => $primaryLangId,
+                        ];
+                    }
+                }
+            }
+
+            return $items;
+        }
+
+        // v1.8.0: Interleaved per-category processing
+        // For each category: OpenAI primary lang, then translate to all other langs
+        foreach ($job['category_ids'] as $idCategory) {
+            // v1.8.0: Smart fill-missing - check if primary language content exists
+            $needsOpenAi = true;
+            if ($writeMode === 'fill_missing') {
+                $needsOpenAi = !$this->categoryHasPrimaryContent($idCategory, $primaryLangId, $fields);
+            }
+
+            // 1. First: OpenAI generation for primary language (unless we're filling missing and content exists)
+            if ($needsOpenAi) {
                 $items[] = [
                     'id_category' => (int) $idCategory,
                     'id_lang' => $primaryLangId,
@@ -563,10 +574,16 @@ class MlCategoryAiJobQueue
                     'source' => 'openai',
                 ];
             }
-        } elseif ($phase === 'translate') {
-            // Phase 2: Google Translate for other languages (one item per category/lang)
+
+            // 2. Then: Google Translate for each target language
             foreach ($translateLangIds as $targetLangId) {
-                foreach ($job['category_ids'] as $idCategory) {
+                // v1.8.0: In fill_missing mode, check if target language needs translation
+                $needsTranslate = true;
+                if ($writeMode === 'fill_missing') {
+                    $needsTranslate = !$this->categoryHasPrimaryContent($idCategory, (int) $targetLangId, $fields);
+                }
+
+                if ($needsTranslate) {
                     $items[] = [
                         'id_category' => (int) $idCategory,
                         'id_lang' => (int) $targetLangId,
@@ -579,6 +596,159 @@ class MlCategoryAiJobQueue
         }
 
         return $items;
+    }
+
+    /**
+     * Check if a category has content in primary fields
+     * v1.8.0: Used for smart fill-missing detection
+     *
+     * NOTE: Queries database directly to avoid PrestaShop's language fallback behavior
+     * (Category object returns default language content when target language is empty)
+     *
+     * @param int $idCategory
+     * @param int $idLang
+     * @param array $fields Fields to check (description, meta_title, meta_description)
+     *
+     * @return bool True if ALL specified fields have content
+     */
+    protected function categoryHasPrimaryContent($idCategory, $idLang, $fields)
+    {
+        // Query database directly to avoid PS language fallback
+        $sql = 'SELECT `description`, `meta_title`, `meta_description`
+                FROM `' . _DB_PREFIX_ . 'category_lang`
+                WHERE `id_category` = ' . (int) $idCategory . '
+                AND `id_lang` = ' . (int) $idLang . '
+                AND `id_shop` = ' . (int) $this->idShop;
+
+        $row = Db::getInstance()->getRow($sql);
+
+        if (!$row) {
+            return false; // No row for this language
+        }
+
+        // Check each requested field
+        foreach ($fields as $field) {
+            $value = '';
+            switch ($field) {
+                case 'description':
+                    $value = isset($row['description']) ? $row['description'] : '';
+                    break;
+                case 'meta_title':
+                    $value = isset($row['meta_title']) ? $row['meta_title'] : '';
+                    break;
+                case 'meta_description':
+                    $value = isset($row['meta_description']) ? $row['meta_description'] : '';
+                    break;
+            }
+
+            // Strip HTML and check if empty
+            $value = trim(strip_tags($value));
+            if (empty($value)) {
+                return false; // At least one field is empty
+            }
+        }
+
+        return true; // All fields have content
+    }
+
+    /**
+     * Find categories that need translation only (have primary content but missing target languages)
+     * v1.8.0: Used for "Translate Missing" feature to recover from interrupted jobs
+     *
+     * @param int $primaryLangId Source language ID
+     * @param array $targetLangIds Target language IDs to check
+     * @param array $fields Fields to check (description, meta_title, meta_description)
+     * @param int $idShop Shop ID (default: current context)
+     *
+     * @return array Array of category IDs that need translation
+     */
+    public function findCategoriesNeedingTranslation($primaryLangId, $targetLangIds, $fields, $idShop = null)
+    {
+        if ($idShop === null) {
+            $idShop = $this->idShop;
+        }
+
+        $categoriesNeedingTranslation = [];
+
+        // Get all categories for this shop
+        $sql = 'SELECT c.id_category
+                FROM `' . _DB_PREFIX_ . 'category` c
+                INNER JOIN `' . _DB_PREFIX_ . 'category_shop` cs 
+                    ON c.id_category = cs.id_category AND cs.id_shop = ' . (int) $idShop . '
+                WHERE c.id_category > 2
+                ORDER BY c.id_category';
+
+        $categories = Db::getInstance()->executeS($sql);
+
+        foreach ($categories as $cat) {
+            $idCategory = (int) $cat['id_category'];
+
+            // Check if primary language has content
+            if (!$this->categoryHasPrimaryContent($idCategory, $primaryLangId, $fields)) {
+                continue; // Skip - needs OpenAI first
+            }
+
+            // Check if any target language is missing content
+            foreach ($targetLangIds as $targetLangId) {
+                if (!$this->categoryHasPrimaryContent($idCategory, (int) $targetLangId, $fields)) {
+                    // This category needs translation for this target language
+                    $categoriesNeedingTranslation[$idCategory] = $idCategory;
+                    break; // Only need to add once
+                }
+            }
+        }
+
+        return array_values($categoriesNeedingTranslation);
+    }
+
+    /**
+     * Create a translate-only job for categories with missing translations
+     * v1.8.0: Recovery feature for interrupted jobs
+     *
+     * @param int $primaryLangId Source language ID
+     * @param array $targetLangIds Target language IDs
+     * @param array $fields Fields to translate
+     * @param string $writeMode Write mode (fill_missing recommended)
+     *
+     * @return int|false Job ID or false on failure
+     */
+    public function createTranslateOnlyJob($primaryLangId, $targetLangIds, $fields, $writeMode = 'fill_missing')
+    {
+        // Find categories that need translation
+        $categoryIds = $this->findCategoriesNeedingTranslation($primaryLangId, $targetLangIds, $fields);
+
+        if (empty($categoryIds)) {
+            return false; // Nothing to translate
+        }
+
+        // Build items list - only translation items, no OpenAI
+        $totalItems = count($categoryIds) * count($targetLangIds);
+
+        // Create the job
+        $result = Db::getInstance()->insert('mlcategoryai_job_queue', [
+            'id_shop' => (int) $this->idShop,
+            'category_ids' => pSQL(json_encode($categoryIds)),
+            'language_ids' => pSQL(json_encode($targetLangIds)), // Target languages
+            'fields_to_generate' => pSQL(json_encode($fields)),
+            'total_items' => (int) $totalItems,
+            'processed_items' => 0,
+            'failed_items' => 0,
+            'current_position' => 0,
+            'status' => self::STATUS_PENDING,
+            'write_mode' => pSQL($writeMode),
+            'use_google_translate' => 1,
+            'primary_language_id' => (int) $primaryLangId,
+            'translate_language_ids' => pSQL(json_encode($targetLangIds)),
+            'phase' => 'translate_only', // Special phase to indicate translate-only mode
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        if (!$result) {
+            return false;
+        }
+
+        return (int) Db::getInstance()->Insert_ID();
     }
 
     /**
