@@ -90,6 +90,8 @@
 (function() {
 	document.addEventListener('DOMContentLoaded', function() {
 		var fieldSelect = document.getElementById('prompt-field-type');
+		var ajaxUrl = window.mlcategoryai_ajax_url || '{$ajax_url|escape:'javascript':'UTF-8'}';
+		var ajaxToken = window.mlcategoryai_token || '';
 		
 		// Function to update visible textareas based on selected field
 		function updateVisibleTextareas() {
@@ -123,7 +125,7 @@
 			$(tabLink).on('shown.bs.tab', updateVisibleTextareas);
 		});
 
-		// Save prompts button
+		// Save prompts button - using FormData for PS 1.7.x compatibility
 		var saveBtn = document.getElementById('btn-save-prompts');
 		if (saveBtn) {
 			saveBtn.addEventListener('click', function() {
@@ -139,15 +141,25 @@
 					prompts[fieldType][idLang] = textarea.value;
 				});
 
-				fetch('{$ajax_url|escape:'javascript':'UTF-8'}', {
+				// Use FormData for better PS 1.7.x compatibility
+				var formData = new FormData();
+				formData.append('action', 'savePrompts');
+				formData.append('token', ajaxToken);
+				formData.append('prompts', JSON.stringify(prompts));
+
+				// Disable button while saving
+				saveBtn.disabled = true;
+				var originalHtml = saveBtn.innerHTML;
+				saveBtn.innerHTML = '<i class="icon icon-spinner icon-spin"></i> {l s='Saving...' mod='mlcategoryaidescription' js=1}';
+
+				fetch(ajaxUrl, {
 					method: 'POST',
-					headers: {
-						'Content-Type': 'application/x-www-form-urlencoded',
-					},
-					body: 'action=savePrompts&prompts=' + encodeURIComponent(JSON.stringify(prompts))
+					body: formData
 				})
 				.then(function(response) { return response.json(); })
 				.then(function(data) {
+					saveBtn.disabled = false;
+					saveBtn.innerHTML = originalHtml;
 					if (data.success) {
 						showSuccessMessage('{l s='Prompts saved successfully!' mod='mlcategoryaidescription' js=1}');
 					} else {
@@ -155,7 +167,133 @@
 					}
 				})
 				.catch(function(error) {
+					saveBtn.disabled = false;
+					saveBtn.innerHTML = originalHtml;
+					console.error('Save prompts error:', error);
 					showErrorMessage('{l s='Error saving prompts' mod='mlcategoryaidescription' js=1}');
+				});
+			});
+		}
+
+		// Reset to default button
+		var resetBtn = document.getElementById('btn-reset-prompt');
+		if (resetBtn) {
+			resetBtn.addEventListener('click', function() {
+				if (!confirm('{l s='Are you sure you want to reset all prompts to default? This will overwrite your custom prompts.' mod='mlcategoryaidescription' js=1}')) {
+					return;
+				}
+
+				// Disable button while resetting
+				resetBtn.disabled = true;
+				var originalHtml = resetBtn.innerHTML;
+				resetBtn.innerHTML = '<i class="icon icon-spinner icon-spin"></i> {l s='Resetting...' mod='mlcategoryaidescription' js=1}';
+
+				var formData = new FormData();
+				formData.append('action', 'resetPrompts');
+				formData.append('token', ajaxToken);
+
+				fetch(ajaxUrl, {
+					method: 'POST',
+					body: formData
+				})
+				.then(function(response) { return response.json(); })
+				.then(function(data) {
+					resetBtn.disabled = false;
+					resetBtn.innerHTML = originalHtml;
+					if (data.success) {
+						showSuccessMessage('{l s='Prompts reset to default successfully! Reloading page...' mod='mlcategoryaidescription' js=1}');
+						setTimeout(function() {
+							location.reload();
+						}, 1500);
+					} else {
+						showErrorMessage(data.error || data.message || '{l s='Error resetting prompts' mod='mlcategoryaidescription' js=1}');
+					}
+				})
+				.catch(function(error) {
+					resetBtn.disabled = false;
+					resetBtn.innerHTML = originalHtml;
+					console.error('Reset prompts error:', error);
+					showErrorMessage('{l s='Error resetting prompts' mod='mlcategoryaidescription' js=1}');
+				});
+			});
+		}
+
+		// Preview prompt button
+		var previewBtn = document.getElementById('btn-preview-prompt');
+		if (previewBtn) {
+			previewBtn.addEventListener('click', function() {
+				// Get current field type and active language tab
+				var selectedField = fieldSelect ? fieldSelect.value : 'description';
+				var activeTab = document.querySelector('#prompt-language-tabs li.active a');
+				var idLang = 1; // Default
+				
+				if (activeTab) {
+					var href = activeTab.getAttribute('href');
+					var match = href.match(/prompt-lang-(\d+)/);
+					if (match) {
+						idLang = parseInt(match[1], 10);
+					}
+				}
+
+				// Get the prompt template from the visible textarea
+				var textarea = document.querySelector('.prompt-textarea-wrapper[data-field="' + selectedField + '"][data-lang="' + idLang + '"] .prompt-textarea');
+				if (!textarea) {
+					showErrorMessage('{l s='Could not find prompt textarea' mod='mlcategoryaidescription' js=1}');
+					return;
+				}
+
+				var promptTemplate = textarea.value;
+				if (!promptTemplate.trim()) {
+					showErrorMessage('{l s='Prompt template is empty' mod='mlcategoryaidescription' js=1}');
+					return;
+				}
+
+				// Get first selected category or use a default
+				var categoryCheckbox = document.querySelector('.category-checkbox:checked');
+				var idCategory = categoryCheckbox ? categoryCheckbox.value : 0;
+
+				if (!idCategory) {
+					showErrorMessage('{l s='Please select a category first to preview the prompt' mod='mlcategoryaidescription' js=1}');
+					return;
+				}
+
+				// Disable button while loading
+				previewBtn.disabled = true;
+				var originalHtml = previewBtn.innerHTML;
+				previewBtn.innerHTML = '<i class="icon icon-spinner icon-spin"></i> {l s='Loading...' mod='mlcategoryaidescription' js=1}';
+
+				var formData = new FormData();
+				formData.append('action', 'previewPrompt');
+				formData.append('token', ajaxToken);
+				formData.append('id_category', idCategory);
+				formData.append('id_lang', idLang);
+				formData.append('prompt_template', promptTemplate);
+
+				fetch(ajaxUrl, {
+					method: 'POST',
+					body: formData
+				})
+				.then(function(response) { return response.json(); })
+				.then(function(data) {
+					previewBtn.disabled = false;
+					previewBtn.innerHTML = originalHtml;
+					
+					var previewResult = document.getElementById('prompt-preview-result');
+					var previewContent = document.getElementById('prompt-preview-content');
+					
+					if (data.success && previewResult && previewContent) {
+						previewContent.textContent = data.resolved_prompt;
+						previewResult.style.display = 'block';
+						previewResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+					} else {
+						showErrorMessage(data.error || '{l s='Error previewing prompt' mod='mlcategoryaidescription' js=1}');
+					}
+				})
+				.catch(function(error) {
+					previewBtn.disabled = false;
+					previewBtn.innerHTML = originalHtml;
+					console.error('Preview prompt error:', error);
+					showErrorMessage('{l s='Error previewing prompt' mod='mlcategoryaidescription' js=1}');
 				});
 			});
 		}

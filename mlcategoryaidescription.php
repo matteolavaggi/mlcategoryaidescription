@@ -316,6 +316,7 @@ CONTEXT INFORMATION:
 - Website: {site_name} ({shop_url})
 - Website description: {site_description}
 - Sample products in this category (for context only): {first_products:10}
+- Actual category description: {category_description}
 
 IMPORTANT GUIDELINES:
 The product list above is provided ONLY to help you understand what TYPE of products this category contains. Use it to identify the general product category and typical use cases.
@@ -348,6 +349,7 @@ INFORMATIONS CONTEXTUELLES :
 - Site web : {site_name} ({shop_url})
 - Description du site : {site_description}
 - Exemples de produits dans cette catégorie (contexte uniquement) : {first_products:10}
+- Description actuelle de la catégorie : {category_description}
 
 DIRECTIVES IMPORTANTES :
 La liste de produits ci-dessus est fournie UNIQUEMENT pour vous aider à comprendre quel TYPE de produits cette catégorie contient. Utilisez-la pour identifier la catégorie générale et les cas d\'utilisation typiques.
@@ -378,6 +380,7 @@ INFORMAZIONI DI CONTESTO:
 - Sito web: {site_name} ({shop_url})
 - Descrizione del sito: {site_description}
 - Prodotti di esempio in questa categoria (solo per contesto): {first_products:10}
+- Descrizione attuale della categoria: {category_description}
 
 LINEE GUIDA IMPORTANTI:
 L\'elenco prodotti sopra è fornito SOLO per aiutarti a capire che TIPO di prodotti contiene questa categoria. Usalo per identificare la categoria generale e i casi d\'uso tipici.
@@ -408,6 +411,7 @@ KONTEXTINFORMATIONEN:
 - Website: {site_name} ({shop_url})
 - Website-Beschreibung: {site_description}
 - Beispielprodukte in dieser Kategorie (nur als Kontext): {first_products:10}
+- Aktuelle Kategoriebeschreibung: {category_description}
 
 WICHTIGE RICHTLINIEN:
 Die obige Produktliste dient NUR dazu, Ihnen zu helfen zu verstehen, welche ART von Produkten diese Kategorie enthält. Nutzen Sie sie, um die allgemeine Produktkategorie zu identifizieren.
@@ -437,6 +441,7 @@ INFORMACIÓN DE CONTEXTO:
 - Sitio web: {site_name} ({shop_url})
 - Descripción del sitio: {site_description}
 - Productos de ejemplo en esta categoría (solo contexto): {first_products:10}
+- Descripción actual de la categoría: {category_description}
 
 DIRECTRICES IMPORTANTES:
 La lista de productos anterior se proporciona SOLO para ayudarte a entender qué TIPO de productos contiene esta categoría. Úsala para identificar la categoría general.
@@ -466,6 +471,7 @@ INFORMAÇÕES DE CONTEXTO:
 - Site: {site_name} ({shop_url})
 - Descrição do site: {site_description}
 - Produtos de exemplo nesta categoria (apenas contexto): {first_products:10}
+- Descrição atual da categoria: {category_description}
 
 DIRETRIZES IMPORTANTES:
 A lista de produtos acima é fornecida APENAS para ajudá-lo a entender que TIPO de produtos esta categoria contém. Use-a para identificar a categoria geral.
@@ -495,6 +501,7 @@ CONTEXTINFORMATIE:
 - Website: {site_name} ({shop_url})
 - Website beschrijving: {site_description}
 - Voorbeeldproducten in deze categorie (alleen context): {first_products:10}
+- Huidige categoriebeschrijving: {category_description}
 
 BELANGRIJKE RICHTLIJNEN:
 De bovenstaande productlijst is ALLEEN bedoeld om u te helpen begrijpen welk TYPE producten deze categorie bevat. Gebruik het om de algemene productcategorie te identificeren.
@@ -524,6 +531,7 @@ INFORMACJE KONTEKSTOWE:
 - Strona: {site_name} ({shop_url})
 - Opis strony: {site_description}
 - Przykładowe produkty w tej kategorii (tylko kontekst): {first_products:10}
+- Aktualny opis kategorii: {category_description}
 
 WAŻNE WYTYCZNE:
 Powyższa lista produktów jest podana TYLKO po to, aby pomóc Ci zrozumieć, jaki TYP produktów zawiera ta kategoria. Użyj jej do identyfikacji ogólnej kategorii produktów.

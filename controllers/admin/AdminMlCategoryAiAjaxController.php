@@ -150,6 +150,10 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
                     $this->handleCountMissingTranslations();
                     break;
 
+                case 'resetPrompts':
+                    $this->handleResetPrompts();
+                    break;
+
                 default:
                     $this->jsonResponse(['success' => false, 'error' => 'Unknown action: ' . $action]);
             }
@@ -830,6 +834,35 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
         }
 
         $this->jsonResponse(['success' => true, 'message' => 'Prompts saved successfully']);
+    }
+
+    /**
+     * Reset prompts to default templates
+     */
+    protected function handleResetPrompts()
+    {
+        $idShop = (int) Shop::getContextShopID();
+
+        // Delete existing prompts for this shop
+        Db::getInstance()->execute(
+            'DELETE ptl FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang` ptl
+            INNER JOIN `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template` pt
+                ON ptl.id_prompt_template = pt.id_prompt_template
+            WHERE pt.id_shop = ' . $idShop
+        );
+
+        Db::getInstance()->execute(
+            'DELETE FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`
+            WHERE id_shop = ' . $idShop
+        );
+
+        // Reinstall default prompts
+        $result = $this->module->installDefaultPromptTemplates();
+
+        $this->jsonResponse([
+            'success' => $result,
+            'message' => $result ? 'Prompts reset to default' : 'Failed to reset prompts',
+        ]);
     }
 
     /**
