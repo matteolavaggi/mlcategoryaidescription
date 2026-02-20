@@ -307,7 +307,7 @@ class Mlcategoryaidescription extends Module
         $defaultPrompts = [
             self::FIELD_DESCRIPTION => [
                 'name' => 'Default Description Prompt',
-                'template_en' => 'Write a compelling and SEO-friendly category description for an e-commerce website.
+                'template_en' => 'Write a compelling and SEO-optimized category description for an e-commerce website.
 
 CONTEXT INFORMATION:
 - Category path: {category_breadcrumb}
@@ -316,30 +316,48 @@ CONTEXT INFORMATION:
 - Website: {site_name} ({shop_url})
 - Website description: {site_description}
 - Sample products in this category (for context only): {first_products:10}
-- Actual category description: {category_description}
+- Current category description: {category_description}
+
+PRELIMINARY ANALYSIS (perform mentally before writing):
+1. From the category path ({category_breadcrumb}), identify if there is a parent brand (e.g., first level = brand) and keep it in mind as text context
+2. From the sample products, extract the functional MACRO-TYPES present (e.g., "levers", "guards", "mounts") — these should be mentioned in the text
+3. For each identified macro-type, build a natural long tail keyword combining type + category name (e.g., "adjustable levers Caponord 1200", "navigator mount Aprilia Caponord")
+4. Identify the main use context (e.g., touring, racing, protection, ergonomics) and use it to build the tone and benefits
 
 IMPORTANT GUIDELINES:
-The product list above is provided ONLY to help you understand what TYPE of products this category contains. Use it to identify the general product category and typical use cases.
+The product list is provided ONLY to understand what TYPE of products the category contains. Use it to identify general types and typical use cases.
 
 DO NOT:
-- Mention specific product names, models, or unique features from the sample list
-- Reference individual items like "our conical pendant lamp" or "the vintage brass fixture"
-- Include any product-specific details that only apply to individual items
+- Mention specific product names, models or SKUs from the list
+- Reference individual items with specific details
+- Ignore the brand or parent category context if present in the breadcrumb
+- Write generically without citing the actual functional product types
+- Use self-referential headings about the site (e.g., "Why choose [site name]")
+- Use weak formulas in the first H2 like "what you find", "what we offer", "discover"
+- Reference specific site features (filters, advanced search, category navigation) that may not exist
 
 DO:
-- Write about the general product TYPE (e.g., "pendant lamps", "LED lighting", "outdoor fixtures")
-- Describe benefits relevant to the entire category
-- Include keywords for the product category, not specific items
-- Focus on what customers look for when shopping this category
-- Highlight variety, quality, and shopping experience
+- Name the product macro-types identified from analysis generically but with natural long tail keywords (type + category name)
+- If the breadcrumb indicates a parent brand, present it in the first paragraph as selection context
+- The first H2 must contain parent brand + category name as main keyword (e.g., "Evotech Performance Accessories for Aprilia Caponord 1200")
+- The second H2 must be action/exploration oriented, not brand-focused (e.g., "Quality and compatibility for [category]", "Choose the right component for [category]")
+- Include natural long tail keywords based on category name and breadcrumb directly in macro-type bullet points
+- Focus on the customer search intent for that specific category
+- The first paragraph must contain the full category name with context
+
+REQUIRED STRUCTURE:
+- Paragraph 1: introduction with main keyword + parent brand/category context + use contexts
+- First H2: [parent brand] + [category name] — followed by bullet points with macro-types and naturally integrated long tail keywords
+- Second H2: soft call to action oriented to exploration (NOT self-referential, NO site feature references)
+- Closing: 1-2 sentences recalling parent brand + category + main benefit
 
 REQUIREMENTS:
 - Length: 250-350 words
-- Use natural, SEO-friendly language
-- Include relevant category keywords (not product names)
-- Write in an engaging, professional tone
-- Structure with clear paragraphs
-- Do not mention prices or specific promotions',
+- Natural, SEO-friendly language
+- Engaging and professional tone
+- Do not mention prices or specific promotions
+- Use H2 headings for subsections
+- Long tail keywords in bullet points must be naturally integrated, not forced',
                 'template_fr' => 'Rédigez une description de catégorie captivante et optimisée SEO pour un site e-commerce.
 
 INFORMATIONS CONTEXTUELLES :
@@ -351,26 +369,46 @@ INFORMATIONS CONTEXTUELLES :
 - Exemples de produits dans cette catégorie (contexte uniquement) : {first_products:10}
 - Description actuelle de la catégorie : {category_description}
 
-DIRECTIVES IMPORTANTES :
-La liste de produits ci-dessus est fournie UNIQUEMENT pour vous aider à comprendre quel TYPE de produits cette catégorie contient. Utilisez-la pour identifier la catégorie générale et les cas d\'utilisation typiques.
+ANALYSE PRÉLIMINAIRE (à effectuer mentalement avant d\'écrire) :
+1. À partir du chemin de catégorie ({category_breadcrumb}), identifiez s\'il existe une marque parente (ex. premier niveau = marque) et gardez-la en contexte
+2. À partir des produits exemples, extrayez les MACRO-TYPES fonctionnels présents (ex. "leviers", "protections", "supports") — ceux-ci doivent être mentionnés dans le texte
+3. Pour chaque macro-type identifié, construisez un mot-clé longue traîne naturel combinant type + nom de catégorie
+4. Identifiez le contexte d\'utilisation principal (ex. touring, racing, protection, ergonomie) et utilisez-le pour construire le ton et les avantages
 
-NE PAS :
-- Mentionner des noms de produits spécifiques, modèles ou caractéristiques uniques
-- Faire référence à des articles individuels
-- Inclure des détails spécifiques qui ne s\'appliquent qu\'à certains produits
+DIRECTIVES IMPORTANTES :
+La liste de produits est fournie UNIQUEMENT pour comprendre quel TYPE de produits contient la catégorie. Utilisez-la pour identifier les types généraux et cas d\'utilisation typiques.
+
+NE PAS FAIRE :
+- Mentionner des noms de produits spécifiques, modèles ou SKU de la liste
+- Faire référence à des articles individuels avec des détails spécifiques
+- Ignorer le contexte de marque ou catégorie parente si présent dans le fil d\'Ariane
+- Écrire de manière générique sans citer les types fonctionnels réels des produits
+- Utiliser des titres autoréférentiels sur le site (ex. "Pourquoi choisir [nom du site]")
+- Utiliser des formules faibles dans le premier H2 comme "ce que vous trouvez", "ce que nous offrons", "découvrez"
+- Faire référence à des fonctionnalités spécifiques du site qui pourraient ne pas exister
 
 À FAIRE :
-- Écrire sur le TYPE général de produits
-- Décrire les avantages pertinents pour toute la catégorie
-- Inclure des mots-clés pour la catégorie, pas pour des produits spécifiques
-- Se concentrer sur ce que les clients recherchent
-- Mettre en avant la variété, la qualité et l\'expérience d\'achat
+- Nommer les macro-types de produits identifiés de manière générique mais avec des mots-clés longue traîne naturels
+- Si le fil d\'Ariane indique une marque parente, la présenter dans le premier paragraphe comme contexte
+- Le premier H2 doit contenir marque parente + nom de catégorie comme mot-clé principal
+- Le second H2 doit être orienté action/exploration, pas centré sur la marque
+- Inclure des mots-clés longue traîne naturels directement dans les points des macro-types
+- Se concentrer sur l\'intention de recherche du client pour cette catégorie spécifique
+- Le premier paragraphe doit contenir le nom complet de la catégorie avec contexte
+
+STRUCTURE OBLIGATOIRE :
+- Paragraphe 1 : introduction avec mot-clé principal + contexte marque/catégorie parente + contextes d\'utilisation
+- Premier H2 : [marque parente] + [nom catégorie] — suivi de points avec macro-types et mots-clés longue traîne intégrés
+- Second H2 : appel à l\'action soft orienté exploration (PAS autoréférentiel, PAS de références aux fonctionnalités du site)
+- Conclusion : 1-2 phrases rappelant marque parente + catégorie + avantage principal
 
 EXIGENCES :
 - Longueur : 250-350 mots
 - Langage naturel et optimisé SEO
 - Ton engageant et professionnel
-- Ne pas mentionner les prix ou promotions',
+- Ne pas mentionner les prix ou promotions
+- Utiliser des titres H2 pour les sous-sections
+- Les mots-clés longue traîne doivent être intégrés naturellement',
                 'template_it' => 'Scrivi una descrizione di categoria accattivante e ottimizzata SEO per un sito e-commerce.
 
 INFORMAZIONI DI CONTESTO:
@@ -382,26 +420,46 @@ INFORMAZIONI DI CONTESTO:
 - Prodotti di esempio in questa categoria (solo per contesto): {first_products:10}
 - Descrizione attuale della categoria: {category_description}
 
+ANALISI PRELIMINARE (esegui mentalmente prima di scrivere):
+1. Dal percorso categoria ({category_breadcrumb}), identifica se esiste un brand padre (es. primo livello = brand) e tienilo presente come contesto del testo
+2. Dai prodotti di esempio, estrai le MACRO-TIPOLOGIE funzionali presenti (es. "leve", "protezioni", "supporti") — queste vanno nominate nel testo
+3. Per ogni macro-tipologia identificata, costruisci una keyword long tail naturale combinando tipologia + nome categoria (es. "leve regolabili Caponord 1200", "supporto navigatore Aprilia Caponord")
+4. Identifica il contesto d\'uso principale (es. touring, racing, protezione, ergonomia) e usalo per costruire il tono e i benefit
+
 LINEE GUIDA IMPORTANTI:
-L\'elenco prodotti sopra è fornito SOLO per aiutarti a capire che TIPO di prodotti contiene questa categoria. Usalo per identificare la categoria generale e i casi d\'uso tipici.
+L\'elenco prodotti è fornito SOLO per capire che TIPO di prodotti contiene la categoria. Usalo per identificare le tipologie generali e i casi d\'uso tipici.
 
 NON FARE:
-- Menzionare nomi di prodotti specifici, modelli o caratteristiche uniche dalla lista
-- Fare riferimento a singoli articoli come "la nostra lampada a sospensione" o "il lampadario vintage"
-- Includere dettagli specifici che si applicano solo a singoli prodotti
+- Menzionare nomi di prodotti specifici, modelli o SKU dalla lista
+- Riferirsi a singoli articoli con dettagli specifici
+- Ignorare il contesto del brand o categoria padre se presente nel breadcrumb
+- Scrivere in modo generico senza citare le tipologie funzionali reali dei prodotti
+- Usare heading autoreferenziali sul sito (es. "Perché scegliere [nome sito]")
+- Usare formule deboli nel primo H2 come "cosa trovi", "cosa offriamo", "scopri"
+- Fare riferimento a funzionalità specifiche del sito (filtri, ricerca avanzata, navigazione per categoria) che potrebbero non essere presenti
 
 FARE:
-- Scrivere sul TIPO generale di prodotti (es. "lampade a sospensione", "illuminazione LED")
-- Descrivere i vantaggi rilevanti per l\'intera categoria
-- Includere parole chiave per la categoria, non per singoli prodotti
-- Concentrarsi su cosa cercano i clienti quando acquistano in questa categoria
-- Evidenziare varietà, qualità ed esperienza di acquisto
+- Nominare le macro-tipologie di prodotti identificate dall\'analisi in modo generico ma con keyword long tail naturali (tipologia + nome categoria)
+- Se il breadcrumb indica un brand padre, presentarlo nel primo paragrafo come contesto della selezione
+- Il primo H2 deve contenere brand padre + nome categoria come keyword principale (es. "Accessori Evotech Performance per Aprilia Caponord 1200")
+- Il secondo H2 deve essere orientato all\'azione/esplorazione, non al brand (es. "Qualità e compatibilità per [categoria]", "Scegli il componente giusto per [categoria]")
+- Includere keyword long tail naturali basate su nome categoria e breadcrumb direttamente nei bullet point delle macro-tipologie
+- Concentrarsi sull\'intento di ricerca del cliente per quella specifica categoria
+- Il primo paragrafo deve contenere il nome categoria completo con contesto
+
+STRUTTURA OBBLIGATORIA:
+- Paragrafo 1: introduzione con keyword principale + contesto brand/categoria padre + contesti d\'uso
+- H2 primo: [brand padre] + [nome categoria] — seguito da bullet point con macro-tipologie e keyword long tail integrate naturalmente
+- H2 secondo: call to action soft orientata all\'esplorazione (NON autoreferenziale, NON riferimenti a funzionalità del sito)
+- Chiusura: 1-2 frasi che richiamano brand padre + categoria + beneficio principale
 
 REQUISITI:
 - Lunghezza: 250-350 parole
 - Linguaggio naturale e SEO-friendly
 - Tono coinvolgente e professionale
-- Non menzionare prezzi o promozioni specifiche',
+- Non menzionare prezzi o promozioni specifiche
+- Usa heading H2 per le sottosezioni
+- Le keyword long tail nei bullet point devono essere integrate naturalmente, non forzate',
                 'template_de' => 'Schreiben Sie eine ansprechende und SEO-optimierte Kategoriebeschreibung für eine E-Commerce-Website.
 
 KONTEXTINFORMATIONEN:
@@ -413,25 +471,46 @@ KONTEXTINFORMATIONEN:
 - Beispielprodukte in dieser Kategorie (nur als Kontext): {first_products:10}
 - Aktuelle Kategoriebeschreibung: {category_description}
 
+VORANALYSE (mental durchführen vor dem Schreiben):
+1. Aus dem Kategoriepfad ({category_breadcrumb}) identifizieren, ob eine übergeordnete Marke existiert (z.B. erste Ebene = Marke) und als Textkontext behalten
+2. Aus den Beispielprodukten die vorhandenen funktionalen MAKRO-TYPEN extrahieren (z.B. "Hebel", "Schutzvorrichtungen", "Halterungen") — diese sollten im Text erwähnt werden
+3. Für jeden identifizierten Makro-Typ ein natürliches Long-Tail-Keyword erstellen, das Typ + Kategoriename kombiniert
+4. Den Hauptnutzungskontext identifizieren (z.B. Touring, Racing, Schutz, Ergonomie) und für Ton und Vorteile nutzen
+
 WICHTIGE RICHTLINIEN:
-Die obige Produktliste dient NUR dazu, Ihnen zu helfen zu verstehen, welche ART von Produkten diese Kategorie enthält. Nutzen Sie sie, um die allgemeine Produktkategorie zu identifizieren.
+Die Produktliste dient NUR dazu zu verstehen, welche ART von Produkten die Kategorie enthält. Nutzen Sie sie zur Identifikation allgemeiner Typen und typischer Anwendungsfälle.
 
 NICHT TUN:
-- Spezifische Produktnamen, Modelle oder einzigartige Merkmale erwähnen
-- Auf einzelne Artikel verweisen
-- Produktspezifische Details einbeziehen
+- Spezifische Produktnamen, Modelle oder SKUs aus der Liste erwähnen
+- Auf einzelne Artikel mit spezifischen Details verweisen
+- Den Marken- oder übergeordneten Kategoriekontext ignorieren, wenn im Breadcrumb vorhanden
+- Generisch schreiben ohne die tatsächlichen funktionalen Produkttypen zu nennen
+- Selbstreferenzielle Überschriften über die Website verwenden (z.B. "Warum [Seitenname] wählen")
+- Schwache Formeln in der ersten H2 verwenden wie "was Sie finden", "was wir anbieten", "entdecken"
+- Auf spezifische Website-Funktionen verweisen, die möglicherweise nicht existieren
 
 TUN:
-- Über den allgemeinen Produkttyp schreiben
-- Vorteile beschreiben, die für die gesamte Kategorie relevant sind
-- Schlüsselwörter für die Kategorie einbeziehen, nicht für einzelne Produkte
-- Vielfalt, Qualität und Einkaufserlebnis hervorheben
+- Die aus der Analyse identifizierten Produkt-Makro-Typen generisch aber mit natürlichen Long-Tail-Keywords benennen
+- Wenn der Breadcrumb eine übergeordnete Marke anzeigt, diese im ersten Absatz als Auswahlkontext präsentieren
+- Die erste H2 muss übergeordnete Marke + Kategoriename als Haupt-Keyword enthalten
+- Die zweite H2 muss aktions-/explorationssorientiert sein, nicht markenfokussiert
+- Natürliche Long-Tail-Keywords direkt in den Makro-Typ-Aufzählungspunkten einbinden
+- Sich auf die Suchabsicht des Kunden für diese spezifische Kategorie konzentrieren
+- Der erste Absatz muss den vollständigen Kategorienamen mit Kontext enthalten
+
+PFLICHTSTRUKTUR:
+- Absatz 1: Einführung mit Haupt-Keyword + übergeordneter Marken-/Kategoriekontext + Nutzungskontexte
+- Erste H2: [übergeordnete Marke] + [Kategoriename] — gefolgt von Aufzählungspunkten mit Makro-Typen und natürlich integrierten Long-Tail-Keywords
+- Zweite H2: Soft-Call-to-Action orientiert an Exploration (NICHT selbstreferenziell, KEINE Website-Funktionsverweise)
+- Abschluss: 1-2 Sätze die übergeordnete Marke + Kategorie + Hauptvorteil aufgreifen
 
 ANFORDERUNGEN:
 - Länge: 250-350 Wörter
 - Natürliche, SEO-freundliche Sprache
 - Ansprechender, professioneller Ton
-- Keine Preise oder spezifische Aktionen erwähnen',
+- Keine Preise oder spezifische Aktionen erwähnen
+- H2-Überschriften für Unterabschnitte verwenden
+- Long-Tail-Keywords müssen natürlich integriert sein, nicht erzwungen',
                 'template_es' => 'Escribe una descripción de categoría atractiva y optimizada para SEO para un sitio e-commerce.
 
 INFORMACIÓN DE CONTEXTO:
@@ -443,25 +522,46 @@ INFORMACIÓN DE CONTEXTO:
 - Productos de ejemplo en esta categoría (solo contexto): {first_products:10}
 - Descripción actual de la categoría: {category_description}
 
+ANÁLISIS PRELIMINAR (realizar mentalmente antes de escribir):
+1. Desde la ruta de categoría ({category_breadcrumb}), identificar si existe una marca padre (ej. primer nivel = marca) y tenerla presente como contexto del texto
+2. De los productos de ejemplo, extraer los MACRO-TIPOS funcionales presentes (ej. "palancas", "protecciones", "soportes") — estos deben mencionarse en el texto
+3. Para cada macro-tipo identificado, construir una keyword long tail natural combinando tipo + nombre de categoría
+4. Identificar el contexto de uso principal (ej. touring, racing, protección, ergonomía) y usarlo para construir el tono y beneficios
+
 DIRECTRICES IMPORTANTES:
-La lista de productos anterior se proporciona SOLO para ayudarte a entender qué TIPO de productos contiene esta categoría. Úsala para identificar la categoría general.
+La lista de productos se proporciona SOLO para entender qué TIPO de productos contiene la categoría. Úsala para identificar tipos generales y casos de uso típicos.
 
 NO HACER:
-- Mencionar nombres de productos específicos, modelos o características únicas
-- Hacer referencia a artículos individuales
-- Incluir detalles específicos de productos individuales
+- Mencionar nombres de productos específicos, modelos o SKUs de la lista
+- Referirse a artículos individuales con detalles específicos
+- Ignorar el contexto de marca o categoría padre si está presente en el breadcrumb
+- Escribir de forma genérica sin citar los tipos funcionales reales de productos
+- Usar encabezados autorreferenciales sobre el sitio (ej. "Por qué elegir [nombre sitio]")
+- Usar fórmulas débiles en el primer H2 como "qué encuentras", "qué ofrecemos", "descubre"
+- Hacer referencia a funcionalidades específicas del sitio que podrían no existir
 
 HACER:
-- Escribir sobre el TIPO general de productos
-- Describir beneficios relevantes para toda la categoría
-- Incluir palabras clave para la categoría, no para productos específicos
-- Destacar variedad, calidad y experiencia de compra
+- Nombrar los macro-tipos de productos identificados del análisis de forma genérica pero con keywords long tail naturales
+- Si el breadcrumb indica una marca padre, presentarla en el primer párrafo como contexto de la selección
+- El primer H2 debe contener marca padre + nombre de categoría como keyword principal
+- El segundo H2 debe estar orientado a la acción/exploración, no a la marca
+- Incluir keywords long tail naturales directamente en los bullet points de macro-tipos
+- Concentrarse en la intención de búsqueda del cliente para esa categoría específica
+- El primer párrafo debe contener el nombre completo de la categoría con contexto
+
+ESTRUCTURA OBLIGATORIA:
+- Párrafo 1: introducción con keyword principal + contexto marca/categoría padre + contextos de uso
+- Primer H2: [marca padre] + [nombre categoría] — seguido de bullet points con macro-tipos y keywords long tail integradas naturalmente
+- Segundo H2: call to action soft orientado a la exploración (NO autorreferencial, NO referencias a funcionalidades del sitio)
+- Cierre: 1-2 frases que recuerden marca padre + categoría + beneficio principal
 
 REQUISITOS:
 - Longitud: 250-350 palabras
 - Lenguaje natural y optimizado para SEO
 - Tono atractivo y profesional
-- No mencionar precios ni promociones específicas',
+- No mencionar precios ni promociones específicas
+- Usar encabezados H2 para las subsecciones
+- Las keywords long tail deben integrarse naturalmente, no forzadas',
                 'template_pt' => 'Escreva uma descrição de categoria atraente e otimizada para SEO para um site e-commerce.
 
 INFORMAÇÕES DE CONTEXTO:
@@ -473,25 +573,46 @@ INFORMAÇÕES DE CONTEXTO:
 - Produtos de exemplo nesta categoria (apenas contexto): {first_products:10}
 - Descrição atual da categoria: {category_description}
 
+ANÁLISE PRELIMINAR (realizar mentalmente antes de escrever):
+1. Do caminho da categoria ({category_breadcrumb}), identificar se existe uma marca pai (ex. primeiro nível = marca) e mantê-la como contexto do texto
+2. Dos produtos de exemplo, extrair os MACRO-TIPOS funcionais presentes (ex. "alavancas", "proteções", "suportes") — estes devem ser mencionados no texto
+3. Para cada macro-tipo identificado, construir uma keyword long tail natural combinando tipo + nome da categoria
+4. Identificar o contexto de uso principal (ex. touring, racing, proteção, ergonomia) e usá-lo para construir o tom e benefícios
+
 DIRETRIZES IMPORTANTES:
-A lista de produtos acima é fornecida APENAS para ajudá-lo a entender que TIPO de produtos esta categoria contém. Use-a para identificar a categoria geral.
+A lista de produtos é fornecida APENAS para entender que TIPO de produtos a categoria contém. Use-a para identificar tipos gerais e casos de uso típicos.
 
 NÃO FAZER:
-- Mencionar nomes de produtos específicos, modelos ou características únicas
-- Fazer referência a itens individuais
-- Incluir detalhes específicos de produtos individuais
+- Mencionar nomes de produtos específicos, modelos ou SKUs da lista
+- Referir-se a itens individuais com detalhes específicos
+- Ignorar o contexto de marca ou categoria pai se presente no breadcrumb
+- Escrever de forma genérica sem citar os tipos funcionais reais dos produtos
+- Usar títulos autorreferenciais sobre o site (ex. "Por que escolher [nome do site]")
+- Usar fórmulas fracas no primeiro H2 como "o que você encontra", "o que oferecemos", "descubra"
+- Fazer referência a funcionalidades específicas do site que podem não existir
 
 FAZER:
-- Escrever sobre o TIPO geral de produtos
-- Descrever benefícios relevantes para toda a categoria
-- Incluir palavras-chave para a categoria, não para produtos específicos
-- Destacar variedade, qualidade e experiência de compra
+- Nomear os macro-tipos de produtos identificados da análise de forma genérica mas com keywords long tail naturais
+- Se o breadcrumb indicar uma marca pai, apresentá-la no primeiro parágrafo como contexto da seleção
+- O primeiro H2 deve conter marca pai + nome da categoria como keyword principal
+- O segundo H2 deve ser orientado à ação/exploração, não à marca
+- Incluir keywords long tail naturais diretamente nos bullet points dos macro-tipos
+- Concentrar-se na intenção de busca do cliente para aquela categoria específica
+- O primeiro parágrafo deve conter o nome completo da categoria com contexto
+
+ESTRUTURA OBRIGATÓRIA:
+- Parágrafo 1: introdução com keyword principal + contexto marca/categoria pai + contextos de uso
+- Primeiro H2: [marca pai] + [nome categoria] — seguido de bullet points com macro-tipos e keywords long tail integradas naturalmente
+- Segundo H2: call to action soft orientado à exploração (NÃO autorreferencial, NÃO referências a funcionalidades do site)
+- Fechamento: 1-2 frases que relembrem marca pai + categoria + benefício principal
 
 REQUISITOS:
 - Comprimento: 250-350 palavras
 - Linguagem natural e otimizada para SEO
 - Tom envolvente e profissional
-- Não mencionar preços ou promoções específicas',
+- Não mencionar preços ou promoções específicas
+- Usar títulos H2 para as subseções
+- As keywords long tail devem ser integradas naturalmente, não forçadas',
                 'template_nl' => 'Schrijf een aantrekkelijke en SEO-geoptimaliseerde categoriebeschrijving voor een e-commerce website.
 
 CONTEXTINFORMATIE:
@@ -503,25 +624,46 @@ CONTEXTINFORMATIE:
 - Voorbeeldproducten in deze categorie (alleen context): {first_products:10}
 - Huidige categoriebeschrijving: {category_description}
 
+VOORAFGAANDE ANALYSE (mentaal uitvoeren voor het schrijven):
+1. Uit het categoriepad ({category_breadcrumb}) identificeren of er een bovenliggend merk bestaat (bijv. eerste niveau = merk) en dit als tekstcontext onthouden
+2. Uit de voorbeeldproducten de aanwezige functionele MACRO-TYPES extraheren (bijv. "hendels", "beschermingen", "houders") — deze moeten in de tekst genoemd worden
+3. Voor elk geïdentificeerd macro-type een natuurlijk long tail keyword bouwen dat type + categorienaam combineert
+4. De belangrijkste gebruikscontext identificeren (bijv. touring, racing, bescherming, ergonomie) en gebruiken voor toon en voordelen
+
 BELANGRIJKE RICHTLIJNEN:
-De bovenstaande productlijst is ALLEEN bedoeld om u te helpen begrijpen welk TYPE producten deze categorie bevat. Gebruik het om de algemene productcategorie te identificeren.
+De productlijst is ALLEEN bedoeld om te begrijpen welk TYPE producten de categorie bevat. Gebruik het om algemene types en typische gebruiksscenario\'s te identificeren.
 
 NIET DOEN:
-- Specifieke productnamen, modellen of unieke kenmerken noemen
-- Verwijzen naar individuele artikelen
-- Productspecifieke details opnemen
+- Specifieke productnamen, modellen of SKU\'s uit de lijst noemen
+- Verwijzen naar individuele artikelen met specifieke details
+- De merk- of bovenliggende categoriecontext negeren indien aanwezig in het breadcrumb
+- Generiek schrijven zonder de werkelijke functionele producttypes te noemen
+- Zelfrefererende koppen over de website gebruiken (bijv. "Waarom kiezen voor [sitenaam]")
+- Zwakke formules in de eerste H2 gebruiken zoals "wat u vindt", "wat we bieden", "ontdek"
+- Verwijzen naar specifieke websitefuncties die mogelijk niet bestaan
 
 WEL DOEN:
-- Schrijven over het algemene producttype
-- Voordelen beschrijven die relevant zijn voor de hele categorie
-- Zoekwoorden voor de categorie opnemen, niet voor specifieke producten
-- Variëteit, kwaliteit en winkelervaring benadrukken
+- De uit de analyse geïdentificeerde product-macro-types generiek benoemen maar met natuurlijke long tail keywords
+- Als het breadcrumb een bovenliggend merk aangeeft, dit in de eerste paragraaf presenteren als selectiecontext
+- De eerste H2 moet bovenliggend merk + categorienaam als hoofdkeyword bevatten
+- De tweede H2 moet actie-/verkenningsgericht zijn, niet merkgericht
+- Natuurlijke long tail keywords direct in de macro-type bullet points opnemen
+- Focussen op de zoekintentie van de klant voor die specifieke categorie
+- De eerste paragraaf moet de volledige categorienaam met context bevatten
+
+VERPLICHTE STRUCTUUR:
+- Paragraaf 1: introductie met hoofdkeyword + bovenliggend merk/categoriecontext + gebruikscontexten
+- Eerste H2: [bovenliggend merk] + [categorienaam] — gevolgd door bullet points met macro-types en natuurlijk geïntegreerde long tail keywords
+- Tweede H2: zachte call to action gericht op verkenning (NIET zelfreferend, GEEN websitfunctieverwijzingen)
+- Afsluiting: 1-2 zinnen die bovenliggend merk + categorie + hoofdvoordeel herinneren
 
 VEREISTEN:
 - Lengte: 250-350 woorden
 - Natuurlijke, SEO-vriendelijke taal
 - Boeiende, professionele toon
-- Geen prijzen of specifieke promoties noemen',
+- Geen prijzen of specifieke promoties noemen
+- H2-koppen gebruiken voor subsecties
+- Long tail keywords moeten natuurlijk geïntegreerd zijn, niet geforceerd',
                 'template_pl' => 'Napisz atrakcyjny i zoptymalizowany pod kątem SEO opis kategorii dla sklepu internetowego.
 
 INFORMACJE KONTEKSTOWE:
@@ -533,25 +675,46 @@ INFORMACJE KONTEKSTOWE:
 - Przykładowe produkty w tej kategorii (tylko kontekst): {first_products:10}
 - Aktualny opis kategorii: {category_description}
 
+WSTĘPNA ANALIZA (wykonaj mentalnie przed pisaniem):
+1. Ze ścieżki kategorii ({category_breadcrumb}) zidentyfikuj, czy istnieje marka nadrzędna (np. pierwszy poziom = marka) i zachowaj ją jako kontekst tekstu
+2. Z przykładowych produktów wyodrębnij obecne funkcjonalne MAKRO-TYPY (np. "dźwignie", "osłony", "uchwyty") — te powinny być wymienione w tekście
+3. Dla każdego zidentyfikowanego makro-typu zbuduj naturalne słowo kluczowe long tail łącząc typ + nazwę kategorii
+4. Zidentyfikuj główny kontekst użycia (np. touring, racing, ochrona, ergonomia) i użyj go do budowania tonu i korzyści
+
 WAŻNE WYTYCZNE:
-Powyższa lista produktów jest podana TYLKO po to, aby pomóc Ci zrozumieć, jaki TYP produktów zawiera ta kategoria. Użyj jej do identyfikacji ogólnej kategorii produktów.
+Lista produktów jest podana TYLKO po to, aby zrozumieć, jaki TYP produktów zawiera kategoria. Użyj jej do identyfikacji ogólnych typów i typowych przypadków użycia.
 
 NIE RÓB:
-- Nie wspominaj konkretnych nazw produktów, modeli lub unikalnych cech
-- Nie odwołuj się do pojedynczych artykułów
-- Nie uwzględniaj szczegółów dotyczących konkretnych produktów
+- Nie wspominaj konkretnych nazw produktów, modeli lub SKU z listy
+- Nie odwołuj się do pojedynczych artykułów ze szczegółowymi informacjami
+- Nie ignoruj kontekstu marki lub kategorii nadrzędnej, jeśli jest obecny w breadcrumb
+- Nie pisz ogólnikowo bez wymieniania rzeczywistych funkcjonalnych typów produktów
+- Nie używaj nagłówków samoreferencyjnych o stronie (np. "Dlaczego wybrać [nazwa strony]")
+- Nie używaj słabych formuł w pierwszym H2 jak "co znajdziesz", "co oferujemy", "odkryj"
+- Nie odwołuj się do specyficznych funkcji strony, które mogą nie istnieć
 
 RÓB:
-- Pisz o ogólnym TYPIE produktów
-- Opisuj korzyści istotne dla całej kategorii
-- Uwzględniaj słowa kluczowe dla kategorii, nie dla konkretnych produktów
-- Podkreślaj różnorodność, jakość i doświadczenie zakupowe
+- Nazwij makro-typy produktów zidentyfikowane z analizy w sposób ogólny, ale z naturalnymi słowami kluczowymi long tail
+- Jeśli breadcrumb wskazuje markę nadrzędną, przedstaw ją w pierwszym akapicie jako kontekst wyboru
+- Pierwszy H2 musi zawierać markę nadrzędną + nazwę kategorii jako główne słowo kluczowe
+- Drugi H2 musi być zorientowany na akcję/eksplorację, nie na markę
+- Włącz naturalne słowa kluczowe long tail bezpośrednio w punktach makro-typów
+- Skup się na intencji wyszukiwania klienta dla tej konkretnej kategorii
+- Pierwszy akapit musi zawierać pełną nazwę kategorii z kontekstem
+
+OBOWIĄZKOWA STRUKTURA:
+- Akapit 1: wprowadzenie z głównym słowem kluczowym + kontekst marki/kategorii nadrzędnej + konteksty użycia
+- Pierwszy H2: [marka nadrzędna] + [nazwa kategorii] — następnie punkty z makro-typami i naturalnie zintegrowanymi słowami kluczowymi long tail
+- Drugi H2: miękkie wezwanie do działania zorientowane na eksplorację (NIE samoreferencyjne, BEZ odniesień do funkcji strony)
+- Zakończenie: 1-2 zdania przypominające markę nadrzędną + kategorię + główną korzyść
 
 WYMAGANIA:
 - Długość: 250-350 słów
 - Naturalny, przyjazny dla SEO język
 - Angażujący, profesjonalny ton
-- Nie wspominaj cen ani konkretnych promocji',
+- Nie wspominaj cen ani konkretnych promocji
+- Używaj nagłówków H2 dla podsekcji
+- Słowa kluczowe long tail muszą być zintegrowane naturalnie, nie wymuszone',
             ],
             self::FIELD_META_TITLE => [
                 'name' => 'Default Meta Title Prompt',
@@ -617,7 +780,6 @@ Requisitos:
 
 Category path: {category_breadcrumb}
 Category: {category_name}
-Products available: {product_count}
 Sample products: {random_products:5}
 
 Requirements:
@@ -629,7 +791,6 @@ Requirements:
 
 Chemin de la catégorie : {category_breadcrumb}
 Catégorie : {category_name}
-Produits disponibles : {product_count}
 Exemples de produits : {random_products:5}
 
 Exigences :
@@ -641,7 +802,6 @@ Exigences :
 
 Percorso categoria: {category_breadcrumb}
 Categoria: {category_name}
-Prodotti disponibili: {product_count}
 Esempi di prodotti: {random_products:5}
 
 Requisiti:
