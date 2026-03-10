@@ -58,6 +58,9 @@ if (!file_exists($configFile)) {
     die("Error: Cannot find PrestaShop config at: $configFile\n");
 }
 
+// Change to PrestaShop root to avoid Symfony YamlParser mkdir issues
+chdir($psRoot);
+
 // Load PrestaShop
 require_once $configFile;
 
