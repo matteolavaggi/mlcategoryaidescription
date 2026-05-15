@@ -173,8 +173,8 @@ while (true) {
         $elapsed = $now - $startTime;
         $rate = $elapsed > 0 ? round($totalProcessed / $elapsed, 1) : 0;
         
-        // Calculate ETA
-        $remaining = $job['total_items'] - ($result['processed'] ?? 0);
+        // Calculate ETA (use latest progress from batch result, not stale $job snapshot)
+        $remaining = (int) ($result['total'] ?? $job['total_items']) - (int) ($result['processed'] ?? 0);
         $eta = $rate > 0 ? round($remaining / $rate / 60, 1) : 0;
         
         echo sprintf(

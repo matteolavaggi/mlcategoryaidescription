@@ -28,6 +28,7 @@ require_once __DIR__ . '/classes/MlCategoryAiClient.php';
 require_once __DIR__ . '/classes/MlCategoryAiGenerator.php';
 require_once __DIR__ . '/classes/MlCategoryAiJobQueue.php';
 require_once __DIR__ . '/classes/MlCategoryAiPlaceholder.php';
+require_once __DIR__ . '/classes/MlManufacturerAiPlaceholder.php';
 require_once __DIR__ . '/classes/MlCategoryAiRunStats.php';
 require_once __DIR__ . '/classes/MlCategoryAiTranslator.php';
 
@@ -92,12 +93,16 @@ class Mlcategoryaidescription extends Module
     const FIELD_META_DESCRIPTION = 'meta_description';
     const FIELD_META_KEYWORDS = 'meta_keywords';
     const FIELD_LINK_REWRITE = 'link_rewrite';
+    const FIELD_SHORT_DESCRIPTION = 'short_description';
+
+    const ENTITY_CATEGORY = 'category';
+    const ENTITY_MANUFACTURER = 'manufacturer';
 
     public function __construct()
     {
         $this->name = 'mlcategoryaidescription';
         $this->tab = 'administration';
-        $this->version = '1.8.0';
+        $this->version = '1.9.0';
         $this->author = '2win.agency';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -156,6 +161,10 @@ class Mlcategoryaidescription extends Module
 
         // Install default prompt templates
         if (!$this->installDefaultPromptTemplates()) {
+            return false;
+        }
+
+        if (!$this->installManufacturerDefaultPromptTemplates()) {
             return false;
         }
 
@@ -300,8 +309,15 @@ class Mlcategoryaidescription extends Module
      */
     public function installDefaultPromptTemplates()
     {
+        $idShop = $this->getPromptTemplatesShopId();
+        $this->ensure190PromptSchema();
+
+        // Non-destructive: if at least one category template with content already exists, do nothing.
+        if ($this->categoryPromptTemplatesAlreadyPopulated($idShop)) {
+            return true;
+        }
+
         $languages = Language::getLanguages(true);
-        $idShop = (int) Shop::getContextShopID();
 
         // Default prompts with translations
         $defaultPrompts = [
@@ -725,7 +741,7 @@ Category: {category_name}
 Website: {site_name}
 
 Requirements:
-- Maximum 60 characters
+- Target about 80 characters (avoid cutting words awkwardly at the end)
 - Include category name and brand if space allows
 - Make it compelling for search results
 - Return ONLY the meta title text, no explanations',
@@ -736,7 +752,7 @@ Catégorie : {category_name}
 Site web : {site_name}
 
 Exigences :
-- Maximum 60 caractères
+- Viser environ 80 caractères (sans couper un mot de façon maladroite)
 - Inclure le nom de la catégorie et la marque si possible
 - Rendre le titre attrayant pour les résultats de recherche
 - Retourner UNIQUEMENT le texte du meta title, sans explications',
@@ -747,7 +763,7 @@ Categoria: {category_name}
 Sito web: {site_name}
 
 Requisiti:
-- Massimo 60 caratteri
+- Punta a circa 80 caratteri (evita troncamenti bruschi a metà parola)
 - Includere il nome della categoria e il brand se possibile
 - Rendere il titolo accattivante per i risultati di ricerca
 - Restituire SOLO il testo del meta title, senza spiegazioni',
@@ -758,7 +774,7 @@ Kategorie: {category_name}
 Website: {site_name}
 
 Anforderungen:
-- Maximal 60 Zeichen
+- Ziel etwa 80 Zeichen (keine Wörter am Ende hart abschneiden)
 - Kategoriename und Marke einbeziehen, wenn Platz vorhanden
 - Ansprechend für Suchergebnisse gestalten
 - NUR den Meta-Titel-Text zurückgeben, keine Erklärungen',
@@ -769,7 +785,7 @@ Categoría: {category_name}
 Sitio web: {site_name}
 
 Requisitos:
-- Máximo 60 caracteres
+- Apunta a unos 80 caracteres (evita cortar palabras de forma brusca al final)
 - Incluir nombre de categoría y marca si hay espacio
 - Hacerlo atractivo para resultados de búsqueda
 - Devolver SOLO el texto del meta title, sin explicaciones',
@@ -783,7 +799,7 @@ Category: {category_name}
 Sample products: {random_products:5}
 
 Requirements:
-- Maximum 155 characters
+- Target about 158 characters (avoid cutting words awkwardly at the end)
 - Include call-to-action
 - Mention variety/selection
 - Return ONLY the meta description text, no explanations',
@@ -794,7 +810,7 @@ Catégorie : {category_name}
 Exemples de produits : {random_products:5}
 
 Exigences :
-- Maximum 155 caractères
+- Viser environ 158 caractères (sans couper un mot de façon maladroite)
 - Inclure un appel à l\'action
 - Mentionner la variété/sélection
 - Retourner UNIQUEMENT le texte de la meta description, sans explications',
@@ -805,7 +821,7 @@ Categoria: {category_name}
 Esempi di prodotti: {random_products:5}
 
 Requisiti:
-- Massimo 155 caratteri
+- Punta a circa 158 caratteri (evita troncamenti bruschi a metà parola)
 - Includere una call-to-action
 - Menzionare la varietà/selezione
 - Restituire SOLO il testo della meta description, senza spiegazioni',
@@ -820,6 +836,7 @@ Sample products: {first_products:5}
 
 Requirements:
 - 5-10 relevant keywords separated by commas
+- Target around 128 characters total for the comma-separated list
 - Include category name and variations
 - Include product type keywords
 - Return ONLY the keywords, comma-separated, no explanations',
@@ -831,6 +848,7 @@ Exemples de produits : {first_products:5}
 
 Exigences :
 - 5-10 mots-clés pertinents séparés par des virgules
+- Viser environ 128 caractères au total pour la liste
 - Inclure le nom de la catégorie et ses variations
 - Inclure les mots-clés du type de produit
 - Retourner UNIQUEMENT les mots-clés, séparés par des virgules, sans explications',
@@ -842,6 +860,7 @@ Esempi di prodotti: {first_products:5}
 
 Requisiti:
 - 5-10 parole chiave rilevanti separate da virgole
+- Punta a circa 128 caratteri totali per l\'elenco
 - Includere il nome della categoria e le sue variazioni
 - Includere parole chiave del tipo di prodotto
 - Restituire SOLO le parole chiave, separate da virgole, senza spiegazioni',
@@ -884,16 +903,21 @@ Requisiti:
             ],
         ];
 
+        $hasEntityColumn = $this->columnExists('mlcategoryai_prompt_template', 'entity_type');
+
         foreach ($defaultPrompts as $fieldType => $promptData) {
-            // Insert main prompt template
-            $result = Db::getInstance()->insert('mlcategoryai_prompt_template', [
+            $row = [
                 'id_shop' => $idShop,
                 'name' => pSQL($promptData['name']),
                 'field_type' => pSQL($fieldType),
                 'is_active' => 1,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
-            ]);
+            ];
+            if ($hasEntityColumn) {
+                $row['entity_type'] = pSQL(self::ENTITY_CATEGORY);
+            }
+            $result = Db::getInstance()->insert('mlcategoryai_prompt_template', $row);
 
             if (!$result) {
                 return false;
@@ -928,6 +952,425 @@ Requisiti:
     }
 
     /**
+     * Remove bogus prompt rows created by earlier reset/save bugs.
+     * Targets rows with non-canonical field_type (e.g. "meta", "link") and empty body.
+     *
+     * @return void
+     */
+    public function cleanupBogusPromptTemplates()
+    {
+        $canonicalFields = [
+            self::FIELD_DESCRIPTION,
+            self::FIELD_SHORT_DESCRIPTION,
+            self::FIELD_META_TITLE,
+            self::FIELD_META_DESCRIPTION,
+            self::FIELD_META_KEYWORDS,
+            self::FIELD_LINK_REWRITE,
+        ];
+        $inList = "'" . implode("','", array_map('pSQL', $canonicalFields)) . "'";
+        $p = _DB_PREFIX_;
+        $db = Db::getInstance();
+
+        $bogusIds = $db->executeS(
+            'SELECT pt.`id_prompt_template`
+            FROM `' . $p . 'mlcategoryai_prompt_template` pt
+            LEFT JOIN `' . $p . 'mlcategoryai_prompt_template_lang` ptl
+                ON ptl.id_prompt_template = pt.id_prompt_template
+            WHERE pt.`field_type` NOT IN (' . $inList . ')
+            GROUP BY pt.`id_prompt_template`
+            HAVING COALESCE(MAX(CHAR_LENGTH(TRIM(COALESCE(ptl.`prompt_template`, "")))), 0) = 0'
+        );
+
+        if (!$bogusIds) {
+            return;
+        }
+
+        $ids = [];
+        foreach ($bogusIds as $row) {
+            $ids[] = (int) $row['id_prompt_template'];
+        }
+        if (empty($ids)) {
+            return;
+        }
+        $idsCsv = implode(',', $ids);
+        $db->execute('DELETE FROM `' . $p . 'mlcategoryai_prompt_template_lang` WHERE id_prompt_template IN (' . $idsCsv . ')');
+        $db->execute('DELETE FROM `' . $p . 'mlcategoryai_prompt_template` WHERE id_prompt_template IN (' . $idsCsv . ')');
+    }
+
+    /**
+     * Apply 1.9.0 schema migrations on tables we touch, idempotently.
+     * Safe to call on every BO request.
+     *
+     * @return void
+     */
+    public function ensure190PromptSchema()
+    {
+        $db = Db::getInstance();
+        $p = _DB_PREFIX_;
+
+        // prompt_template.entity_type
+        if (!$this->columnExists('mlcategoryai_prompt_template', 'entity_type')) {
+            $db->execute(
+                'ALTER TABLE `' . $p . 'mlcategoryai_prompt_template`
+                ADD `entity_type` VARCHAR(20) NOT NULL DEFAULT \'category\' AFTER `name`'
+            );
+            $db->execute(
+                'UPDATE `' . $p . 'mlcategoryai_prompt_template`
+                SET `entity_type` = \'category\'
+                WHERE `entity_type` = \'\' OR `entity_type` IS NULL'
+            );
+        }
+        if (!$this->indexExists('mlcategoryai_prompt_template', 'idx_shop_field_entity')) {
+            $db->execute(
+                'ALTER TABLE `' . $p . 'mlcategoryai_prompt_template`
+                ADD INDEX `idx_shop_field_entity` (`id_shop`, `field_type`, `entity_type`)'
+            );
+        }
+
+        // job_queue: entity_type, manufacturer_ids, last_processed_manufacturer_id
+        if (!$this->columnExists('mlcategoryai_job_queue', 'entity_type')) {
+            $db->execute(
+                'ALTER TABLE `' . $p . 'mlcategoryai_job_queue`
+                ADD `entity_type` VARCHAR(20) NOT NULL DEFAULT \'category\' AFTER `id_shop`'
+            );
+        }
+        if (!$this->columnExists('mlcategoryai_job_queue', 'manufacturer_ids')) {
+            $db->execute(
+                'ALTER TABLE `' . $p . 'mlcategoryai_job_queue`
+                ADD `manufacturer_ids` TEXT NULL AFTER `category_ids`'
+            );
+        }
+        if (!$this->columnExists('mlcategoryai_job_queue', 'last_processed_manufacturer_id')) {
+            $db->execute(
+                'ALTER TABLE `' . $p . 'mlcategoryai_job_queue`
+                ADD `last_processed_manufacturer_id` INT(11) UNSIGNED NULL AFTER `last_processed_category_id`'
+            );
+        }
+
+        // generation_log: entity_type, id_manufacturer, id_category nullable
+        if (!$this->columnExists('mlcategoryai_generation_log', 'entity_type')) {
+            $db->execute(
+                'ALTER TABLE `' . $p . 'mlcategoryai_generation_log`
+                ADD `entity_type` VARCHAR(20) NOT NULL DEFAULT \'category\' AFTER `id_generation_log`'
+            );
+        }
+        if (!$this->columnExists('mlcategoryai_generation_log', 'id_manufacturer')) {
+            $db->execute(
+                'ALTER TABLE `' . $p . 'mlcategoryai_generation_log`
+                ADD `id_manufacturer` INT(11) UNSIGNED NULL AFTER `id_category`'
+            );
+        }
+        @$db->execute(
+            'ALTER TABLE `' . $p . 'mlcategoryai_generation_log` MODIFY `id_category` INT(11) UNSIGNED NULL'
+        );
+    }
+
+    /**
+     * @param string $table No prefix.
+     * @param string $column
+     *
+     * @return bool
+     */
+    protected function columnExists($table, $column)
+    {
+        // Use executeS: PrestaShop's getRow() may wrap with LIMIT 1 which breaks SHOW COLUMNS ... LIKE on some MySQL versions.
+        $rows = Db::getInstance()->executeS(
+            'SHOW COLUMNS FROM `' . _DB_PREFIX_ . bqSQL($table) . '` WHERE `Field` = \'' . pSQL($column) . '\''
+        );
+
+        return !empty($rows);
+    }
+
+    /**
+     * @param string $table No prefix.
+     * @param string $indexName
+     *
+     * @return bool
+     */
+    protected function indexExists($table, $indexName)
+    {
+        $rows = Db::getInstance()->executeS(
+            'SHOW INDEX FROM `' . _DB_PREFIX_ . bqSQL($table) . '` WHERE Key_name = \'' . pSQL($indexName) . '\''
+        );
+
+        return !empty($rows);
+    }
+
+    /**
+     * Has at least one category template row with non-empty content for this shop.
+     *
+     * @param int $idShop
+     *
+     * @return bool
+     */
+    protected function categoryPromptTemplatesAlreadyPopulated($idShop)
+    {
+        $idShop = (int) $idShop;
+        $entityWhere = '1';
+        if ($this->columnExists('mlcategoryai_prompt_template', 'entity_type')) {
+            $entityWhere = '(pt.`entity_type` = "' . pSQL(self::ENTITY_CATEGORY) . '" OR pt.`entity_type` IS NULL OR pt.`entity_type` = "")';
+        }
+
+        $cnt = (int) Db::getInstance()->getValue(
+            'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template` pt
+            INNER JOIN `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang` ptl
+                ON ptl.id_prompt_template = pt.id_prompt_template
+            WHERE pt.`id_shop` = ' . $idShop . '
+            AND ' . $entityWhere . '
+            AND CHAR_LENGTH(TRIM(COALESCE(ptl.`prompt_template`, ""))) > 0'
+        );
+
+        return $cnt > 0;
+    }
+
+    /**
+     * @param int $idShop
+     *
+     * @return bool
+     */
+    protected function categoryPromptTemplatesNeedSeeding($idShop)
+    {
+        $required = [
+            self::FIELD_DESCRIPTION,
+            self::FIELD_META_TITLE,
+            self::FIELD_META_DESCRIPTION,
+            self::FIELD_LINK_REWRITE,
+        ];
+        if (MlCategoryAiGenerator::hasMetaKeywordsSupport()) {
+            $required[] = self::FIELD_META_KEYWORDS;
+        }
+
+        $entitySql = pSQL(self::ENTITY_CATEGORY);
+        $idShop = (int) $idShop;
+        // Be tolerant of legacy rows where entity_type column was not yet populated.
+        $entityWhere = '(`entity_type` = "' . $entitySql . '" OR `entity_type` IS NULL OR `entity_type` = "")';
+        $entityWherePt = '(pt.`entity_type` = "' . $entitySql . '" OR pt.`entity_type` IS NULL OR pt.`entity_type` = "")';
+
+        $cntPt = (int) Db::getInstance()->getValue(
+            'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`
+            WHERE `id_shop` = ' . $idShop . ' AND ' . $entityWhere
+        );
+
+        if ($cntPt < count($required)) {
+            return true;
+        }
+
+        foreach ($required as $field) {
+            $hasContent = (int) Db::getInstance()->getValue(
+                'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template` pt
+                INNER JOIN `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang` ptl
+                    ON pt.id_prompt_template = ptl.id_prompt_template
+                WHERE pt.`id_shop` = ' . $idShop . '
+                AND ' . $entityWherePt . '
+                AND pt.`field_type` = "' . pSQL($field) . '"
+                AND CHAR_LENGTH(TRIM(COALESCE(ptl.`prompt_template`, ""))) > 0'
+            );
+            if ($hasContent < 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param int $idShop
+     *
+     * @return void
+     */
+    protected function deleteCategoryPromptTemplatesForShop($idShop)
+    {
+        $idShop = (int) $idShop;
+        $entitySql = pSQL(self::ENTITY_CATEGORY);
+
+        Db::getInstance()->execute(
+            'DELETE ptl FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang` ptl
+            INNER JOIN `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template` pt
+                ON ptl.id_prompt_template = pt.id_prompt_template
+            WHERE pt.id_shop = ' . $idShop . '
+            AND (pt.entity_type = "' . $entitySql . '" OR pt.entity_type = "" OR pt.entity_type IS NULL)'
+        );
+
+        Db::getInstance()->execute(
+            'DELETE FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`
+            WHERE id_shop = ' . $idShop . '
+            AND (entity_type = "' . $entitySql . '" OR entity_type = "" OR entity_type IS NULL)'
+        );
+    }
+
+    /**
+     * @return int
+     */
+    protected function getPromptTemplatesShopId()
+    {
+        $idShop = 0;
+        $ctx = Context::getContext();
+        if (isset($ctx->shop) && Validate::isLoadedObject($ctx->shop)) {
+            $idShop = (int) $ctx->shop->id;
+        }
+        if ($idShop < 1) {
+            $idShop = (int) Shop::getContextShopID();
+        }
+        if ($idShop < 1) {
+            $idShop = 1;
+        }
+
+        return $idShop;
+    }
+
+    /**
+     * @param int $idShop
+     *
+     * @return bool
+     */
+    protected function manufacturerPromptTemplatesNeedSeeding($idShop)
+    {
+        $includeKeywords = MlCategoryAiGenerator::hasManufacturerMetaKeywordsSupport();
+        $required = [
+            self::FIELD_DESCRIPTION,
+            self::FIELD_SHORT_DESCRIPTION,
+            self::FIELD_META_TITLE,
+            self::FIELD_META_DESCRIPTION,
+        ];
+        if ($includeKeywords) {
+            $required[] = self::FIELD_META_KEYWORDS;
+        }
+
+        $entitySql = pSQL(self::ENTITY_MANUFACTURER);
+        $idShop = (int) $idShop;
+
+        $cntPt = (int) Db::getInstance()->getValue(
+            'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`
+            WHERE `id_shop` = ' . $idShop . ' AND `entity_type` = "' . $entitySql . '"'
+        );
+
+        if ($cntPt < count($required)) {
+            return true;
+        }
+
+        foreach ($required as $field) {
+            $hasContent = (int) Db::getInstance()->getValue(
+                'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template` pt
+                INNER JOIN `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang` ptl
+                    ON pt.id_prompt_template = ptl.id_prompt_template
+                WHERE pt.`id_shop` = ' . $idShop . '
+                AND pt.`entity_type` = "' . $entitySql . '"
+                AND pt.`field_type` = "' . pSQL($field) . '"
+                AND CHAR_LENGTH(TRIM(COALESCE(ptl.`prompt_template`, ""))) > 0'
+            );
+            if ($hasContent < 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param int $idShop
+     *
+     * @return void
+     */
+    protected function deleteManufacturerPromptTemplatesForShop($idShop)
+    {
+        $idShop = (int) $idShop;
+        $entitySql = pSQL(self::ENTITY_MANUFACTURER);
+
+        Db::getInstance()->execute(
+            'DELETE ptl FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang` ptl
+            INNER JOIN `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template` pt
+                ON ptl.id_prompt_template = pt.id_prompt_template
+            WHERE pt.id_shop = ' . $idShop . '
+            AND pt.entity_type = "' . $entitySql . '"'
+        );
+
+        Db::getInstance()->execute(
+            'DELETE FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`
+            WHERE id_shop = ' . $idShop . '
+            AND entity_type = "' . $entitySql . '"'
+        );
+    }
+
+    /**
+     * Install manufacturer prompt templates (Polish + English in file; other langs fallback).
+     *
+     * @return bool
+     */
+    public function installManufacturerDefaultPromptTemplates()
+    {
+        $this->ensure190PromptSchema();
+        if (!$this->columnExists('mlcategoryai_prompt_template', 'entity_type')) {
+            return false;
+        }
+        $idShop = $this->getPromptTemplatesShopId();
+
+        if (!$this->manufacturerPromptTemplatesNeedSeeding($idShop)) {
+            return true;
+        }
+
+        $this->deleteManufacturerPromptTemplatesForShop($idShop);
+
+        $path = dirname(__FILE__) . '/install/manufacturer_prompts_defaults.php';
+        if (!is_readable($path)) {
+            return false;
+        }
+
+        $defaultPrompts = include $path;
+        if (!is_array($defaultPrompts)) {
+            return false;
+        }
+
+        $languages = Language::getLanguages(true);
+        $includeKeywords = MlCategoryAiGenerator::hasManufacturerMetaKeywordsSupport();
+
+        foreach ($defaultPrompts as $fieldType => $promptData) {
+            if ($fieldType === self::FIELD_META_KEYWORDS && !$includeKeywords) {
+                continue;
+            }
+
+            $result = Db::getInstance()->insert('mlcategoryai_prompt_template', [
+                'id_shop' => $idShop,
+                'name' => pSQL($promptData['name']),
+                'entity_type' => pSQL(self::ENTITY_MANUFACTURER),
+                'field_type' => pSQL($fieldType),
+                'is_active' => 1,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            if (!$result) {
+                return false;
+            }
+
+            $idPromptTemplate = (int) Db::getInstance()->Insert_ID();
+
+            foreach ($languages as $lang) {
+                $isoCode = strtolower($lang['iso_code']);
+                $templateKey = 'template_' . $isoCode;
+
+                if (!isset($promptData[$templateKey])) {
+                    $templateKey = 'template_en';
+                }
+                if (!isset($promptData[$templateKey])) {
+                    $templateKey = 'template_pl';
+                }
+
+                $result = Db::getInstance()->insert('mlcategoryai_prompt_template_lang', [
+                    'id_prompt_template' => $idPromptTemplate,
+                    'id_lang' => (int) $lang['id_lang'],
+                    'prompt_template' => pSQL($promptData[$templateKey], true),
+                ]);
+
+                if (!$result) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Load the configuration form
      *
      * @return string
@@ -935,6 +1378,9 @@ Requisiti:
     public function getContent()
     {
         $output = '';
+
+        $this->ensure190PromptSchema();
+        $this->cleanupBogusPromptTemplates();
 
         // Handle form submission
         if ((bool) Tools::isSubmit('submitMlcategoryaidescriptionModule') == true) {
@@ -972,6 +1418,8 @@ Requisiti:
             'google_translate_configured' => !empty(Configuration::get(self::CONFIG_GOOGLE_TRANSLATE_API_KEY)),
             'primary_language_id' => (int) Configuration::get(self::CONFIG_PRIMARY_LANGUAGE),
             'translate_language_ids' => array_map('intval', json_decode(Configuration::get(self::CONFIG_TRANSLATE_LANGUAGES), true) ?: []),
+            'manufacturers_list' => $this->getManufacturersListForBatch(),
+            'has_manufacturer_meta_keywords' => MlCategoryAiGenerator::hasManufacturerMetaKeywordsSupport(),
         ]);
 
         // Add header info panel FIRST
@@ -1072,6 +1520,112 @@ Requisiti:
     }
 
     /**
+     * Manufacturers for batch UI: shop scope, language fallback for names,
+     * product count includes inactive products; manufacturers without products are listed (count 0).
+     *
+     * @return array
+     */
+    protected function getManufacturersListForBatch()
+    {
+        $idShop = (int) $this->context->shop->id;
+        $idLang = (int) $this->context->language->id;
+
+        $rows = $this->fetchManufacturersListForShop($idShop, $idLang, true);
+
+        if (empty($rows) && !Shop::isFeatureActive()) {
+            $rows = $this->fetchManufacturersListForShop($idShop, $idLang, false);
+        }
+
+        if (!$rows) {
+            return [];
+        }
+
+        $gen = $this->getManufacturersGenerationInfo();
+        $out = [];
+        foreach ($rows as $row) {
+            $id = (int) $row['id_manufacturer'];
+            $out[] = [
+                'id_manufacturer' => $id,
+                'name' => $row['name'],
+                'product_count' => (int) $row['product_count'],
+                'last_generated' => isset($gen[$id]) ? $gen[$id]['last_generated_short'] : null,
+                'generation_type' => isset($gen[$id]) ? $gen[$id]['type'] : null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param int $idShop
+     * @param int $idLang Back-office language (for label)
+     * @param bool $restrictToManufacturerShop INNER JOIN manufacturer_shop when true
+     *
+     * @return array
+     */
+    protected function fetchManufacturersListForShop($idShop, $idLang, $restrictToManufacturerShop)
+    {
+        $shopJoin = '';
+        if ($restrictToManufacturerShop) {
+            $shopJoin = 'INNER JOIN `' . _DB_PREFIX_ . 'manufacturer_shop` ms
+                ON ms.`id_manufacturer` = m.`id_manufacturer` AND ms.`id_shop` = ' . (int) $idShop;
+        }
+
+        // Manufacturer name lives on the base table `ps_manufacturer.name` (no lang join).
+        $sql = 'SELECT m.`id_manufacturer`,
+            COALESCE(NULLIF(TRIM(m.`name`), ""), CONCAT("Manufacturer ", m.`id_manufacturer`)) AS `name`,
+            (SELECT COUNT(*)
+                FROM `' . _DB_PREFIX_ . 'product` p
+                INNER JOIN `' . _DB_PREFIX_ . 'product_shop` ps
+                    ON ps.`id_product` = p.`id_product` AND ps.`id_shop` = ' . (int) $idShop . '
+                WHERE p.`id_manufacturer` = m.`id_manufacturer`
+            ) AS product_count
+            FROM `' . _DB_PREFIX_ . 'manufacturer` m
+            ' . $shopJoin . '
+            WHERE m.`active` = 1
+            ORDER BY `name` ASC';
+
+        $result = Db::getInstance()->executeS($sql);
+
+        return $result ? $result : [];
+    }
+
+    /**
+     * @return array<int, array>
+     */
+    protected function getManufacturersGenerationInfo()
+    {
+        $idShop = (int) $this->context->shop->id;
+
+        $sql = 'SELECT gl.`id_manufacturer`,
+                MAX(gl.`generated_at`) AS last_generated,
+                COUNT(DISTINCT gl.`field_type`) AS fields_count
+                FROM `' . _DB_PREFIX_ . 'mlcategoryai_generation_log` gl
+                WHERE gl.`id_shop` = ' . (int) $idShop . '
+                AND gl.`entity_type` = "' . pSQL(self::ENTITY_MANUFACTURER) . '"
+                AND gl.`id_manufacturer` IS NOT NULL
+                AND gl.`status` = "success"
+                GROUP BY gl.`id_manufacturer`';
+
+        $results = Db::getInstance()->executeS($sql);
+        $info = [];
+        if ($results) {
+            foreach ($results as $row) {
+                $id = (int) $row['id_manufacturer'];
+                $fieldsCount = (int) $row['fields_count'];
+                $info[$id] = [
+                    'last_generated' => $row['last_generated'],
+                    'last_generated_short' => date('d/m', strtotime($row['last_generated'])),
+                    'fields_count' => $fieldsCount,
+                    'type' => $fieldsCount >= 4 ? 'full' : 'partial',
+                ];
+            }
+        }
+
+        return $info;
+    }
+
+    /**
      * Get last generation info for all categories
      *
      * @return array Indexed by id_category
@@ -1088,6 +1642,8 @@ Requisiti:
                     GROUP_CONCAT(DISTINCT gl.field_type) as fields_list
                 FROM `' . _DB_PREFIX_ . 'mlcategoryai_generation_log` gl
                 WHERE gl.id_shop = ' . $idShop . '
+                AND gl.id_category IS NOT NULL
+                AND (gl.entity_type = "category" OR gl.entity_type IS NULL OR gl.entity_type = "")
                 AND gl.status = "success"
                 GROUP BY gl.id_category';
 
@@ -1171,16 +1727,41 @@ Requisiti:
     /**
      * Get current running job if any
      *
+     * Must align with {@see MlCategoryAiJobQueue::getActiveJob()} (oldest pending first)
+     * so the BO banner matches what cron/CLI will process. Previously DESC picked the newest
+     * row, so a newer queued job could show 0% while the worker ran an older job.
+     *
      * @return array|null
      */
     protected function getCurrentRunningJob()
     {
+        $idShop = (int) $this->context->shop->id;
+        $table = '`' . _DB_PREFIX_ . 'mlcategoryai_job_queue`';
+
         $result = Db::getInstance()->getRow(
-            'SELECT * FROM `' . _DB_PREFIX_ . 'mlcategoryai_job_queue`
-            WHERE `status` IN ("pending", "running", "paused")
-            AND `id_shop` = ' . (int) $this->context->shop->id . '
-            ORDER BY `created_at` DESC'
+            'SELECT * FROM ' . $table . '
+            WHERE `status` = "running"
+            AND `id_shop` = ' . $idShop . '
+            ORDER BY `updated_at` DESC'
         );
+
+        if (!$result) {
+            $result = Db::getInstance()->getRow(
+                'SELECT * FROM ' . $table . '
+                WHERE `status` = "paused"
+                AND `id_shop` = ' . $idShop . '
+                ORDER BY `updated_at` DESC'
+            );
+        }
+
+        if (!$result) {
+            $result = Db::getInstance()->getRow(
+                'SELECT * FROM ' . $table . '
+                WHERE `status` = "pending"
+                AND `id_shop` = ' . $idShop . '
+                ORDER BY `created_at` ASC'
+            );
+        }
 
         return $result ?: null;
     }
@@ -1242,6 +1823,7 @@ Requisiti:
             $this->getConfigFormApi(),
             $this->getConfigFormGeneration(),
             $this->getConfigFormPrompts(),
+            $this->getConfigFormManufacturerPrompts(),
             $this->getConfigFormTranslation(),
             $this->getConfigFormCron(),
         ]);
@@ -1426,6 +2008,10 @@ Requisiti:
      */
     protected function getPromptEditorHtml()
     {
+        $this->ensure190PromptSchema();
+        $this->cleanupBogusPromptTemplates();
+        $this->installDefaultPromptTemplates();
+
         $languages = Language::getLanguages(true);
         $fieldTypes = [
             self::FIELD_DESCRIPTION => $this->l('Description'),
@@ -1448,7 +2034,7 @@ Requisiti:
         }
 
         // Load current prompts from database
-        $prompts = $this->loadPromptTemplates();
+        $prompts = $this->loadPromptTemplates(self::ENTITY_CATEGORY);
 
         $this->context->smarty->assign([
             'languages' => $languages,
@@ -1461,20 +2047,79 @@ Requisiti:
     }
 
     /**
+     * Manufacturer prompt editor HTML.
+     *
+     * @return string
+     */
+    protected function getManufacturerPromptEditorHtml()
+    {
+        $this->ensure190PromptSchema();
+        $this->cleanupBogusPromptTemplates();
+        $this->installManufacturerDefaultPromptTemplates();
+
+        $languages = Language::getLanguages(true);
+        $fieldTypes = [
+            self::FIELD_DESCRIPTION => $this->l('Description'),
+            self::FIELD_SHORT_DESCRIPTION => $this->l('Short description'),
+            self::FIELD_META_TITLE => $this->l('Meta Title'),
+            self::FIELD_META_DESCRIPTION => $this->l('Meta Description'),
+        ];
+        if (MlCategoryAiGenerator::hasManufacturerMetaKeywordsSupport()) {
+            $withKw = [];
+            foreach ($fieldTypes as $key => $label) {
+                $withKw[$key] = $label;
+                if ($key === self::FIELD_META_DESCRIPTION) {
+                    $withKw[self::FIELD_META_KEYWORDS] = $this->l('Meta Keywords');
+                }
+            }
+            $fieldTypes = $withKw;
+        }
+
+        $this->context->smarty->assign([
+            'languages' => $languages,
+            'field_types' => $fieldTypes,
+            'prompts' => $this->loadPromptTemplates(self::ENTITY_MANUFACTURER),
+            'ajax_url' => $this->getAjaxUrl(),
+        ]);
+
+        return $this->context->smarty->fetch($this->local_path . 'views/templates/admin/prompt_editor_manufacturer.tpl');
+    }
+
+    /**
      * Load all prompt templates from database
      *
      * @return array
      */
-    protected function loadPromptTemplates()
+    protected function loadPromptTemplates($entityType = null)
     {
+        if ($entityType === null || $entityType === '') {
+            $entityType = self::ENTITY_CATEGORY;
+        }
         $idShop = (int) $this->context->shop->id;
         $prompts = [];
+
+        $hasEntityColumn = $this->columnExists('mlcategoryai_prompt_template', 'entity_type');
+        if ($hasEntityColumn) {
+            if ($entityType === self::ENTITY_CATEGORY) {
+                // Be tolerant of legacy rows with missing/empty entity_type.
+                $entityCondition = '(pt.entity_type = "' . pSQL($entityType) . '" OR pt.entity_type IS NULL OR pt.entity_type = "")';
+            } else {
+                $entityCondition = 'pt.entity_type = "' . pSQL($entityType) . '"';
+            }
+        } else {
+            // Pre-1.9.0 schema: all rows are categories; manufacturer set is empty.
+            if ($entityType !== self::ENTITY_CATEGORY) {
+                return [];
+            }
+            $entityCondition = '1';
+        }
 
         $sql = 'SELECT pt.*, ptl.id_lang, ptl.prompt_template
                 FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template` pt
                 LEFT JOIN `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang` ptl
                     ON pt.id_prompt_template = ptl.id_prompt_template
                 WHERE pt.id_shop = ' . $idShop . '
+                AND ' . $entityCondition . '
                 AND pt.is_active = 1
                 ORDER BY pt.field_type, ptl.id_lang';
 
@@ -1492,6 +2137,29 @@ Requisiti:
         }
 
         return $prompts;
+    }
+
+    /**
+     * @return array
+     */
+    protected function getConfigFormManufacturerPrompts()
+    {
+        return [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Manufacturer prompt templates'),
+                    'icon' => 'icon-copyright',
+                ],
+                'description' => $this->l('Prompts for manufacturer AI generation. Defaults: Polish and English; other languages use English until customized.'),
+                'input' => [
+                    [
+                        'type' => 'html',
+                        'name' => 'mfr_prompt_intro',
+                        'html_content' => $this->getManufacturerPromptEditorHtml(),
+                    ],
+                ],
+            ],
+        ];
     }
 
     /**

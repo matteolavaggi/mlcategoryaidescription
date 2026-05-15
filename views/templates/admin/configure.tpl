@@ -232,7 +232,7 @@
 								<small class="text-muted">({l s='OpenAI generation' mod='mlcategoryaidescription'})</small>
 							</div>
 							<div class="col-xs-6">
-								<strong>{l s='Translate to:' mod='mlcategoryaidescription'}</strong><br>
+								<strong>{l s='Translate to (Translation settings):' mod='mlcategoryaidescription'}</strong><br>
 								{assign var="translate_count" value=0}
 								{foreach from=$languages item=lang}
 									{if in_array($lang.id_lang, $translate_language_ids)}
@@ -243,6 +243,9 @@
 								{if $translate_count == 0}
 									<span class="text-warning">{l s='No languages configured' mod='mlcategoryaidescription'}</span>
 								{/if}
+								<p class="help-block" style="margin-top:8px;margin-bottom:0;">
+									{l s='Only languages checked in Select Languages when you start a job are translated; they must also be enabled here (save module settings).' mod='mlcategoryaidescription'}
+								</p>
 							</div>
 						</div>
 						<input type="hidden" id="primary-language-id" value="{$primary_language_id|escape:'htmlall':'UTF-8'}">
@@ -275,7 +278,7 @@
 		</div>
 	</div>
 
-	{* Progress Display (shown during generation) *}
+	{* Progress Display (shared: category + manufacturer browser mode) *}
 	<div id="mlcategoryai-progress" style="display:none;">
 		<div class="progress">
 			<div class="progress-bar progress-bar-striped active" role="progressbar" id="generation-progress-bar" style="width: 0%">
@@ -284,6 +287,224 @@
 		</div>
 		<div id="generation-log" class="well" style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;">
 		</div>
+	</div>
+</div>
+
+{* Manufacturer batch: separate panel below category AI Content Generation *}
+<div class="panel" id="mlcategoryai-mfr-batch-panel">
+	<h3><i class="icon icon-copyright"></i> {l s='Manufacturer AI generation' mod='mlcategoryaidescription'}</h3>
+	<div id="mlcategoryai-mfr-new-job-form" {if $current_job}style="display:none;"{/if}>
+			{if $manufacturers_list|@count > 0}
+			<div class="row">
+				<div class="col-lg-6">
+					<div class="form-group">
+						<label class="control-label">{l s='Select manufacturers' mod='mlcategoryaidescription'}</label>
+						<div class="input-group" style="margin-bottom: 10px;">
+							<span class="input-group-addon"><i class="icon icon-search"></i></span>
+							<input type="text" id="manufacturer-search" class="form-control" placeholder="{l s='Search manufacturers...' mod='mlcategoryaidescription'}">
+							<span class="input-group-btn">
+								<button type="button" class="btn btn-default" id="clear-manufacturer-search" title="{l s='Clear search' mod='mlcategoryaidescription'}">
+									<i class="icon icon-times"></i>
+								</button>
+							</span>
+						</div>
+						<div class="btn-group btn-group-sm" style="margin-bottom: 10px;">
+							<button type="button" class="btn btn-default" id="select-all-manufacturers">
+								<i class="icon icon-check-square-o"></i> {l s='Select All' mod='mlcategoryaidescription'}
+							</button>
+							<button type="button" class="btn btn-default" id="deselect-all-manufacturers">
+								<i class="icon icon-square-o"></i> {l s='Deselect All' mod='mlcategoryaidescription'}
+							</button>
+						</div>
+						<div id="manufacturer-list-container" class="mfr-list-box" style="max-height: 360px; overflow-y: auto; border: 1px solid #ddd; padding: 10px;">
+							{foreach from=$manufacturers_list item=mfr}
+							<div class="mfr-list-row" data-name="{$mfr.name|escape:'htmlall':'UTF-8'|lower}">
+								<label class="mfr-list-label">
+									<input type="checkbox" class="manufacturer-checkbox" value="{$mfr.id_manufacturer|escape:'htmlall':'UTF-8'}" data-name="{$mfr.name|escape:'htmlall':'UTF-8'|lower}">
+									<span class="mfr-list-name">{$mfr.name|escape:'htmlall':'UTF-8'}</span>
+									<span class="text-muted">({$mfr.product_count|intval})</span>
+									{if isset($mfr.last_generated) && $mfr.last_generated}
+									<span class="mlcatai-gen-info" title="{if $mfr.generation_type == 'full'}{l s='Full generation (all fields)' mod='mlcategoryaidescription'}{else}{l s='Partial generation' mod='mlcategoryaidescription'}{/if}">
+										{$mfr.last_generated|escape:'htmlall':'UTF-8'} {if $mfr.generation_type == 'full'}full{else}partial{/if}
+									</span>
+									{/if}
+								</label>
+							</div>
+							{/foreach}
+						</div>
+						<p class="help-block">
+							<span id="selected-manufacturers-count">0</span> {l s='manufacturers selected' mod='mlcategoryaidescription'}
+						</p>
+					</div>
+				</div>
+				<div class="col-lg-6">
+					<div class="form-group">
+						<label class="control-label">{l s='Select Languages' mod='mlcategoryaidescription'}</label>
+						<div class="checkbox">
+							<label>
+								<input type="checkbox" id="select-all-mfr-languages" checked>
+								<strong>{l s='Select All' mod='mlcategoryaidescription'}</strong>
+							</label>
+						</div>
+						{foreach from=$languages item=lang}
+						<div class="checkbox">
+							<label>
+								<input type="checkbox" name="mfr_languages[]" value="{$lang.id_lang|escape:'htmlall':'UTF-8'}" class="mfr-lang-checkbox" checked>
+								{$lang.name|escape:'htmlall':'UTF-8'}
+							</label>
+						</div>
+						{/foreach}
+					</div>
+					<div class="form-group">
+						<label class="control-label">{l s='Fields to Generate' mod='mlcategoryaidescription'}</label>
+						<div class="checkbox">
+							<label>
+								<input type="checkbox" name="mfr_fields[]" value="description" class="mfr-field-checkbox" checked>
+								{l s='Description' mod='mlcategoryaidescription'}
+							</label>
+						</div>
+						<div class="checkbox">
+							<label>
+								<input type="checkbox" name="mfr_fields[]" value="short_description" class="mfr-field-checkbox" checked>
+								{l s='Short description' mod='mlcategoryaidescription'}
+							</label>
+						</div>
+						<div class="checkbox">
+							<label>
+								<input type="checkbox" name="mfr_fields[]" value="meta_title" class="mfr-field-checkbox" checked>
+								{l s='Meta Title' mod='mlcategoryaidescription'}
+							</label>
+						</div>
+						<div class="checkbox">
+							<label>
+								<input type="checkbox" name="mfr_fields[]" value="meta_description" class="mfr-field-checkbox" checked>
+								{l s='Meta Description' mod='mlcategoryaidescription'}
+							</label>
+						</div>
+						{if isset($has_manufacturer_meta_keywords) && $has_manufacturer_meta_keywords}
+						<div class="checkbox">
+							<label>
+								<input type="checkbox" name="mfr_fields[]" value="meta_keywords" class="mfr-field-checkbox">
+								{l s='Meta Keywords' mod='mlcategoryaidescription'}
+							</label>
+						</div>
+						{/if}
+					</div>
+					<div class="form-group">
+						<label class="control-label">{l s='Write Mode' mod='mlcategoryaidescription'}</label>
+						<select id="mfr-write-mode-select" class="form-control">
+							<option value="fill_missing">{l s='Fill missing only - Keep existing content' mod='mlcategoryaidescription'}</option>
+							<option value="overwrite">{l s='Overwrite - Replace all content' mod='mlcategoryaidescription'}</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label class="control-label">{l s='Processing Mode' mod='mlcategoryaidescription'}</label>
+						<select id="mfr-processing-mode-select" class="form-control">
+							<option value="browser">{l s='Browser - Process now (keep this tab open)' mod='mlcategoryaidescription'}</option>
+							<option value="background">{l s='Background - Create job for cron processing' mod='mlcategoryaidescription'}</option>
+						</select>
+						<p class="help-block" id="mfr-processing-mode-help">
+							<span id="mfr-help-browser">{l s='Processing will happen in this browser tab. Do not close until complete.' mod='mlcategoryaidescription'}</span>
+							<span id="mfr-help-background" style="display:none;">{l s='Job will be queued. Configure cron to process automatically in background.' mod='mlcategoryaidescription'}</span>
+						</p>
+					</div>
+
+					{* Google Translate: same behaviour as category panel; checkbox synced in back.js *}
+					{if isset($google_translate_enabled) && $google_translate_enabled && $google_translate_configured}
+					<div class="form-group" id="google-translate-mode-group-mfr">
+						<label class="control-label">
+							{l s='Translation Mode' mod='mlcategoryaidescription'}
+							<span class="badge badge-success" style="margin-left: 5px;">
+								<i class="icon icon-globe"></i> {l s='Google Translate' mod='mlcategoryaidescription'}
+							</span>
+						</label>
+						<div class="checkbox">
+							<label>
+								<input type="checkbox" id="use-google-translate-mfr" value="1" checked>
+								<strong>{l s='Use Google Translate' mod='mlcategoryaidescription'}</strong>
+							</label>
+						</div>
+						<p class="help-block">
+							{l s='Generate content in primary language using OpenAI, then translate to other languages using Google Translate API. This is faster and more cost-effective.' mod='mlcategoryaidescription'}
+						</p>
+						<div id="google-translate-details-mfr" class="well well-sm" style="margin-top: 10px;">
+							<div class="row">
+								<div class="col-xs-6">
+									<strong>{l s='Primary Language:' mod='mlcategoryaidescription'}</strong><br>
+									{foreach from=$languages item=lang}
+										{if $lang.id_lang == $primary_language_id}
+											<span class="label label-primary">{$lang.name|escape:'htmlall':'UTF-8'}</span>
+										{/if}
+									{/foreach}
+									<small class="text-muted">({l s='OpenAI generation' mod='mlcategoryaidescription'})</small>
+								</div>
+								<div class="col-xs-6">
+									<strong>{l s='Translate to (Translation settings):' mod='mlcategoryaidescription'}</strong><br>
+									{assign var="translate_count_mfr" value=0}
+									{foreach from=$languages item=lang}
+										{if in_array($lang.id_lang, $translate_language_ids)}
+											<span class="label label-info">{$lang.name|escape:'htmlall':'UTF-8'}</span>
+											{assign var="translate_count_mfr" value=$translate_count_mfr+1}
+										{/if}
+									{/foreach}
+									{if $translate_count_mfr == 0}
+										<span class="text-warning">{l s='No languages configured' mod='mlcategoryaidescription'}</span>
+									{/if}
+									<p class="help-block" style="margin-top:8px;margin-bottom:0;">
+										{l s='Only languages checked in Select Languages when you start a job are translated; they must also be enabled here (save module settings).' mod='mlcategoryaidescription'}
+									</p>
+								</div>
+							</div>
+							<p class="help-block" style="margin-top:10px;margin-bottom:0;">
+								{l s='Uses the same primary language and GT targets as in category generation above; changing one checkbox updates both.' mod='mlcategoryaidescription'}
+							</p>
+						</div>
+					</div>
+					{elseif isset($google_translate_enabled) && $google_translate_enabled && !$google_translate_configured}
+					<div class="alert alert-warning" style="margin-top: 10px;">
+						<i class="icon icon-exclamation-triangle"></i>
+						{l s='Google Translate is enabled but API key is not configured. Please configure it in the Translation Settings section below.' mod='mlcategoryaidescription'}
+					</div>
+					{/if}
+				</div>
+			</div>
+			<div class="panel-footer">
+				<button type="button" class="btn btn-primary" id="btn-start-mfr-generation">
+					<i class="icon icon-rocket"></i> {l s='Start manufacturer generation' mod='mlcategoryaidescription'}
+				</button>
+				<button type="button" class="btn btn-info" id="btn-start-mfr-background" style="display:none;">
+					<i class="icon icon-clock-o"></i> {l s='Queue for Background' mod='mlcategoryaidescription'}
+				</button>
+				{if isset($google_translate_enabled) && $google_translate_enabled && $google_translate_configured}
+				<button type="button" class="btn btn-default" id="btn-test-google-api-mfr">
+					<i class="icon icon-globe"></i> {l s='Test Google Translate' mod='mlcategoryaidescription'}
+				</button>
+				{/if}
+			</div>
+			<div class="table-responsive" style="margin-top:15px;">
+				<table class="table table-bordered table-condensed">
+					<thead>
+						<tr>
+							<th>{l s='Placeholder' mod='mlcategoryaidescription'}</th>
+							<th>{l s='Description' mod='mlcategoryaidescription'}</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr><td><code>{literal}{manufacturer_name}{/literal}</code></td><td>{l s='Manufacturer name' mod='mlcategoryaidescription'}</td></tr>
+						<tr><td><code>{literal}{manufacturer_description}{/literal}</code></td><td>{l s='Current manufacturer description' mod='mlcategoryaidescription'}</td></tr>
+						<tr><td><code>{literal}{unique_categories:N}{/literal}</code></td><td>{l s='Distinct category names from products linked to this manufacturer' mod='mlcategoryaidescription'}</td></tr>
+						<tr><td><code>{literal}{first_products:N}{/literal}</code></td><td>{l s='Sample product names (context)' mod='mlcategoryaidescription'}</td></tr>
+						<tr><td><code>{literal}{random_products:N}{/literal}</code></td><td>{l s='Random sample products (context)' mod='mlcategoryaidescription'}</td></tr>
+						<tr><td><code>{literal}{site_name}{/literal}</code></td><td>{l s='Shop name' mod='mlcategoryaidescription'}</td></tr>
+						<tr><td><code>{literal}{shop_url}{/literal}</code></td><td>{l s='Shop URL' mod='mlcategoryaidescription'}</td></tr>
+					</tbody>
+				</table>
+			</div>
+			{else}
+			<div class="alert alert-info">
+				{l s='No active manufacturers found for this shop. Enable manufacturers in the Catalog or associate them with this shop (multistore).' mod='mlcategoryaidescription'}
+			</div>
+			{/if}
 	</div>
 </div>
 

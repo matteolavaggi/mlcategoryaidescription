@@ -28,7 +28,9 @@ $sql = [];
 // Generation log table - tracks all AI generation history
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_generation_log` (
     `id_generation_log` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-    `id_category` INT(11) UNSIGNED NOT NULL,
+    `entity_type` VARCHAR(20) NOT NULL DEFAULT "category" COMMENT "category|manufacturer",
+    `id_category` INT(11) UNSIGNED DEFAULT NULL,
+    `id_manufacturer` INT(11) UNSIGNED DEFAULT NULL,
     `id_lang` INT(11) UNSIGNED NOT NULL,
     `id_shop` INT(11) UNSIGNED NOT NULL DEFAULT 1,
     `field_type` VARCHAR(50) NOT NULL COMMENT "description|meta_title|meta_description",
@@ -40,6 +42,8 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_generation
     `error_message` TEXT DEFAULT NULL,
     PRIMARY KEY (`id_generation_log`),
     KEY `idx_category_lang` (`id_category`, `id_lang`),
+    KEY `idx_manufacturer_lang` (`id_manufacturer`, `id_lang`),
+    KEY `idx_entity_type` (`entity_type`),
     KEY `idx_generated_at` (`generated_at`),
     KEY `idx_status` (`status`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
@@ -48,12 +52,14 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_generation
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_job_queue` (
     `id_job` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
     `id_shop` INT(11) UNSIGNED NOT NULL DEFAULT 1,
+    `entity_type` VARCHAR(20) NOT NULL DEFAULT "category" COMMENT "category|manufacturer",
     `job_type` VARCHAR(50) NOT NULL DEFAULT "batch_generation" COMMENT "batch_generation",
     `status` VARCHAR(20) NOT NULL DEFAULT "pending" COMMENT "pending|running|paused|completed|failed",
     `total_items` INT(11) NOT NULL DEFAULT 0,
     `processed_items` INT(11) NOT NULL DEFAULT 0,
     `failed_items` INT(11) NOT NULL DEFAULT 0,
     `category_ids` TEXT NOT NULL COMMENT "JSON array of category IDs",
+    `manufacturer_ids` TEXT DEFAULT NULL COMMENT "JSON array of manufacturer IDs",
     `language_ids` TEXT NOT NULL COMMENT "JSON array of language IDs",
     `fields_to_generate` VARCHAR(255) NOT NULL COMMENT "JSON array: description,meta_title,meta_description",
     `write_mode` VARCHAR(20) NOT NULL DEFAULT "fill_missing" COMMENT "overwrite|fill_missing",
@@ -65,6 +71,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_job_queue`
     `current_translate_position` INT(10) UNSIGNED NOT NULL DEFAULT 0,
     `current_position` INT(11) NOT NULL DEFAULT 0,
     `last_processed_category_id` INT(11) DEFAULT NULL,
+    `last_processed_manufacturer_id` INT(11) UNSIGNED DEFAULT NULL,
     `last_processed_lang_id` INT(11) DEFAULT NULL,
     `created_at` DATETIME NOT NULL,
     `started_at` DATETIME DEFAULT NULL,
@@ -81,6 +88,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_prompt_tem
     `id_prompt_template` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
     `id_shop` INT(11) UNSIGNED NOT NULL DEFAULT 1,
     `name` VARCHAR(128) NOT NULL,
+    `entity_type` VARCHAR(20) NOT NULL DEFAULT "category" COMMENT "category|manufacturer",
     `field_type` VARCHAR(50) NOT NULL COMMENT "description|meta_title|meta_description",
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
     `created_at` DATETIME NOT NULL,
@@ -88,7 +96,8 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mlcategoryai_prompt_tem
     PRIMARY KEY (`id_prompt_template`),
     KEY `idx_field_type` (`field_type`),
     KEY `idx_active` (`is_active`),
-    KEY `idx_shop` (`id_shop`)
+    KEY `idx_shop` (`id_shop`),
+    KEY `idx_shop_field_entity` (`id_shop`, `field_type`, `entity_type`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
 
 // Prompt template language table - multilanguage prompts

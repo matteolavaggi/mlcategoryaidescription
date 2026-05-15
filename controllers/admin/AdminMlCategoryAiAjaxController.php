@@ -80,6 +80,11 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
 
         $action = Tools::getValue('action');
 
+        // Ensure 1.9.0 schema columns exist before any prompt-related DB query.
+        if (isset($this->module) && is_object($this->module) && method_exists($this->module, 'ensure190PromptSchema')) {
+            $this->module->ensure190PromptSchema();
+        }
+
         try {
             switch ($action) {
                 case 'testConnection':
@@ -92,6 +97,10 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
 
                 case 'createJob':
                     $this->handleCreateJob();
+                    break;
+
+                case 'createManufacturerJob':
+                    $this->handleCreateManufacturerJob();
                     break;
 
                 case 'processJob':
@@ -616,6 +625,8 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
             return;
         }
 
+        $requestedLangIds = array_map('intval', $languageIds);
+
         if (empty($fieldsToGenerate) || !is_array($fieldsToGenerate)) {
             $this->jsonResponse(['success' => false, 'error' => 'No fields selected']);
 
@@ -625,21 +636,41 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
         // Build GT options if enabled
         $gtOptions = [];
         if ($useGoogleTranslate && $primaryLanguageId > 0) {
-            // Get translate languages from config (already saved via settings form)
-            $translateLanguageIds = json_decode(
+            if (!in_array($primaryLanguageId, $requestedLangIds, true)) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'error' => 'Google Translate mode requires the primary language to be checked in Select Languages.',
+                ]);
+
+                return;
+            }
+
+            // Targets from Translation settings (excluding primary)
+            $configuredTargets = json_decode(
                 Configuration::get(Mlcategoryaidescription::CONFIG_TRANSLATE_LANGUAGES),
                 true
             ) ?: [];
-
-            // Filter out primary language from translate targets
-            $translateLanguageIds = array_filter($translateLanguageIds, function ($langId) use ($primaryLanguageId) {
+            $configuredTargets = array_map('intval', $configuredTargets);
+            $configuredTargets = array_filter($configuredTargets, function ($langId) use ($primaryLanguageId) {
                 return (int) $langId !== $primaryLanguageId;
             });
+
+            if (empty($configuredTargets)) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'error' => 'Google Translate enabled but no target languages are configured. Use Translate to Languages in Translation Settings and save.',
+                ]);
+
+                return;
+            }
+
+            // Only Google-translate into languages both configured and selected in the job form
+            $translateLanguageIds = array_values(array_intersect($configuredTargets, $requestedLangIds));
 
             if (empty($translateLanguageIds)) {
                 $this->jsonResponse([
                     'success' => false,
-                    'error' => 'Google Translate enabled but no target languages configured. Please configure target languages in Translation Settings.',
+                    'error' => 'No Google Translate targets: tick the same languages in Select Languages as in Translation Settings (excluding the primary language).',
                 ]);
 
                 return;
@@ -648,11 +679,11 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
             $gtOptions = [
                 'use_google_translate' => true,
                 'primary_language_id' => $primaryLanguageId,
-                'translate_language_ids' => array_values($translateLanguageIds),
+                'translate_language_ids' => $translateLanguageIds,
             ];
 
-            // Override language_ids to only include primary + translate targets
-            $languageIds = array_merge([$primaryLanguageId], $translateLanguageIds);
+            // Job languages: primary + selected targets only (respects Select Languages)
+            $languageIds = array_values(array_unique(array_merge([$primaryLanguageId], $translateLanguageIds)));
         }
 
         $jobQueue = new MlCategoryAiJobQueue();
@@ -675,6 +706,110 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
             ]);
         } else {
             $this->jsonResponse(['success' => false, 'error' => 'Failed to create job']);
+        }
+    }
+
+    /**
+     * Create manufacturer batch job (same queue/cron as categories).
+     */
+    protected function handleCreateManufacturerJob()
+    {
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiJobQueue.php';
+
+        $manufacturerIds = Tools::getValue('manufacturer_ids');
+        $languageIds = Tools::getValue('language_ids');
+        $fieldsToGenerate = Tools::getValue('fields');
+        $writeMode = Tools::getValue('write_mode', 'fill_missing');
+
+        $useGoogleTranslate = (bool) Tools::getValue('use_google_translate', false);
+        $primaryLanguageId = (int) Tools::getValue('primary_language_id', 0);
+
+        if (empty($manufacturerIds) || !is_array($manufacturerIds)) {
+            $this->jsonResponse(['success' => false, 'error' => 'No manufacturers selected']);
+
+            return;
+        }
+
+        if (empty($languageIds) || !is_array($languageIds)) {
+            $this->jsonResponse(['success' => false, 'error' => 'No languages selected']);
+
+            return;
+        }
+
+        $requestedLangIds = array_map('intval', $languageIds);
+
+        if (empty($fieldsToGenerate) || !is_array($fieldsToGenerate)) {
+            $this->jsonResponse(['success' => false, 'error' => 'No fields selected']);
+
+            return;
+        }
+
+        $gtOptions = [];
+        if ($useGoogleTranslate && $primaryLanguageId > 0) {
+            if (!in_array($primaryLanguageId, $requestedLangIds, true)) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'error' => 'Google Translate mode requires the primary language to be checked in Select Languages.',
+                ]);
+
+                return;
+            }
+
+            $configuredTargets = json_decode(
+                Configuration::get(Mlcategoryaidescription::CONFIG_TRANSLATE_LANGUAGES),
+                true
+            ) ?: [];
+            $configuredTargets = array_map('intval', $configuredTargets);
+            $configuredTargets = array_filter($configuredTargets, function ($langId) use ($primaryLanguageId) {
+                return (int) $langId !== $primaryLanguageId;
+            });
+
+            if (empty($configuredTargets)) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'error' => 'Google Translate enabled but no target languages configured in Translation Settings.',
+                ]);
+
+                return;
+            }
+
+            $translateLanguageIds = array_values(array_intersect($configuredTargets, $requestedLangIds));
+
+            if (empty($translateLanguageIds)) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'error' => 'No Google Translate targets: select matching languages.',
+                ]);
+
+                return;
+            }
+
+            $gtOptions = [
+                'use_google_translate' => true,
+                'primary_language_id' => $primaryLanguageId,
+                'translate_language_ids' => $translateLanguageIds,
+            ];
+
+            $languageIds = array_values(array_unique(array_merge([$primaryLanguageId], $translateLanguageIds)));
+        }
+
+        $jobQueue = new MlCategoryAiJobQueue();
+        $jobId = $jobQueue->createManufacturerJob(
+            array_map('intval', $manufacturerIds),
+            array_map('intval', $languageIds),
+            $fieldsToGenerate,
+            $writeMode,
+            $gtOptions
+        );
+
+        if ($jobId) {
+            $this->jsonResponse([
+                'success' => true,
+                'job_id' => $jobId,
+                'message' => 'Manufacturer job created successfully',
+            ]);
+        } else {
+            $this->jsonResponse(['success' => false, 'error' => 'Failed to create manufacturer job']);
         }
     }
 
@@ -773,6 +908,10 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
     {
         $promptsRaw = Tools::getValue('prompts');
         $idShop = (int) Shop::getContextShopID();
+        $entityType = (string) Tools::getValue('entity_type', Mlcategoryaidescription::ENTITY_CATEGORY);
+        if (!in_array($entityType, [Mlcategoryaidescription::ENTITY_CATEGORY, Mlcategoryaidescription::ENTITY_MANUFACTURER], true)) {
+            $entityType = Mlcategoryaidescription::ENTITY_CATEGORY;
+        }
 
         // Decode JSON if sent as string
         if (is_string($promptsRaw)) {
@@ -790,13 +929,15 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
         foreach ($prompts as $fieldType => $langPrompts) {
             $idTemplate = (int) Db::getInstance()->getValue(
                 'SELECT `id_prompt_template` FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`
-                WHERE `field_type` = "' . pSQL($fieldType) . '" AND `id_shop` = ' . $idShop
+                WHERE `field_type` = "' . pSQL($fieldType) . '" AND `id_shop` = ' . $idShop . '
+                AND `entity_type` = "' . pSQL($entityType) . '"'
             );
 
             if (!$idTemplate) {
                 Db::getInstance()->insert('mlcategoryai_prompt_template', [
                     'id_shop' => $idShop,
-                    'name' => 'Custom ' . ucfirst($fieldType) . ' Prompt',
+                    'name' => 'Custom ' . ucfirst(str_replace('_', ' ', $fieldType)) . ' Prompt',
+                    'entity_type' => pSQL($entityType),
                     'field_type' => pSQL($fieldType),
                     'is_active' => 1,
                     'created_at' => date('Y-m-d H:i:s'),
@@ -842,22 +983,31 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
     protected function handleResetPrompts()
     {
         $idShop = (int) Shop::getContextShopID();
+        $entityType = (string) Tools::getValue('entity_type', Mlcategoryaidescription::ENTITY_CATEGORY);
+        if (!in_array($entityType, [Mlcategoryaidescription::ENTITY_CATEGORY, Mlcategoryaidescription::ENTITY_MANUFACTURER], true)) {
+            $entityType = Mlcategoryaidescription::ENTITY_CATEGORY;
+        }
 
-        // Delete existing prompts for this shop
+        // Delete prompts for this shop + entity only
         Db::getInstance()->execute(
             'DELETE ptl FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template_lang` ptl
             INNER JOIN `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template` pt
                 ON ptl.id_prompt_template = pt.id_prompt_template
-            WHERE pt.id_shop = ' . $idShop
+            WHERE pt.id_shop = ' . $idShop . '
+            AND pt.entity_type = "' . pSQL($entityType) . '"'
         );
 
         Db::getInstance()->execute(
             'DELETE FROM `' . _DB_PREFIX_ . 'mlcategoryai_prompt_template`
-            WHERE id_shop = ' . $idShop
+            WHERE id_shop = ' . $idShop . '
+            AND entity_type = "' . pSQL($entityType) . '"'
         );
 
-        // Reinstall default prompts
-        $result = $this->module->installDefaultPromptTemplates();
+        if ($entityType === Mlcategoryaidescription::ENTITY_MANUFACTURER) {
+            $result = $this->module->installManufacturerDefaultPromptTemplates();
+        } else {
+            $result = $this->module->installDefaultPromptTemplates();
+        }
 
         $this->jsonResponse([
             'success' => $result,
@@ -871,25 +1021,51 @@ class AdminMlCategoryAiAjaxController extends ModuleAdminController
     protected function handlePreviewPrompt()
     {
         require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlCategoryAiPlaceholder.php';
+        require_once _PS_MODULE_DIR_ . 'mlcategoryaidescription/classes/MlManufacturerAiPlaceholder.php';
 
-        $idCategory = (int) Tools::getValue('id_category');
         $idLang = (int) Tools::getValue('id_lang');
         $promptTemplate = Tools::getValue('prompt_template');
+        $entityType = (string) Tools::getValue('entity_type', Mlcategoryaidescription::ENTITY_CATEGORY);
+        if (!in_array($entityType, [Mlcategoryaidescription::ENTITY_CATEGORY, Mlcategoryaidescription::ENTITY_MANUFACTURER], true)) {
+            $entityType = Mlcategoryaidescription::ENTITY_CATEGORY;
+        }
 
-        if (!$idCategory || !$idLang) {
-            $this->jsonResponse(['success' => false, 'error' => 'Category and language are required']);
+        if (!$idLang) {
+            $this->jsonResponse(['success' => false, 'error' => 'Language is required']);
 
             return;
         }
 
-        $category = new Category($idCategory, $idLang);
-        if (!Validate::isLoadedObject($category)) {
-            $this->jsonResponse(['success' => false, 'error' => 'Invalid category']);
+        if ($entityType === Mlcategoryaidescription::ENTITY_MANUFACTURER) {
+            $idManufacturer = (int) Tools::getValue('id_manufacturer');
+            if (!$idManufacturer) {
+                $this->jsonResponse(['success' => false, 'error' => 'Manufacturer and language are required']);
 
-            return;
+                return;
+            }
+            $manufacturer = new Manufacturer($idManufacturer, $idLang);
+            if (!Validate::isLoadedObject($manufacturer)) {
+                $this->jsonResponse(['success' => false, 'error' => 'Invalid manufacturer']);
+
+                return;
+            }
+            $placeholder = new MlManufacturerAiPlaceholder((int) $manufacturer->id, $idLang);
+        } else {
+            $idCategory = (int) Tools::getValue('id_category');
+            if (!$idCategory) {
+                $this->jsonResponse(['success' => false, 'error' => 'Category and language are required']);
+
+                return;
+            }
+            $category = new Category($idCategory, $idLang);
+            if (!Validate::isLoadedObject($category)) {
+                $this->jsonResponse(['success' => false, 'error' => 'Invalid category']);
+
+                return;
+            }
+            $placeholder = new MlCategoryAiPlaceholder((int) $category->id, $idLang);
         }
 
-        $placeholder = new MlCategoryAiPlaceholder((int) $category->id, $idLang);
         $resolvedPrompt = $placeholder->resolve($promptTemplate);
 
         $this->jsonResponse([

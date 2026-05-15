@@ -60,6 +60,23 @@
             this.bindJobQueueEvents();
             this.checkExistingJob();
             this.startJobStatusRefresh();
+            this.applyGoogleTranslateDetailsVisibility();
+        },
+
+        applyGoogleTranslateDetailsVisibility: function () {
+            var c = document.getElementById('use-google-translate');
+            var m = document.getElementById('use-google-translate-mfr');
+            var checked = !!(c && c.checked) || !!(m && m.checked);
+            var d1 = document.getElementById('google-translate-details');
+            var d2 = document.getElementById('google-translate-details-mfr');
+            if (d1) d1.style.display = checked ? 'block' : 'none';
+            if (d2) d2.style.display = checked ? 'block' : 'none';
+        },
+
+        isGoogleTranslateJobOptionEnabled: function () {
+            var c = document.getElementById('use-google-translate');
+            var m = document.getElementById('use-google-translate-mfr');
+            return !!(c && c.checked) || !!(m && m.checked);
         },
 
         bindEvents: function () {
@@ -74,6 +91,87 @@
             addEvent('btn-start-background', 'click', function () {
                 self.startGeneration('background');
             });
+
+            addEvent('btn-start-mfr-generation', 'click', function () {
+                self.startManufacturerGeneration('browser');
+            });
+            addEvent('btn-start-mfr-background', 'click', function () {
+                self.startManufacturerGeneration('background');
+            });
+
+            addEvent('mfr-processing-mode-select', 'change', function () {
+                var mode = this.value;
+                var browserBtn = document.getElementById('btn-start-mfr-generation');
+                var backgroundBtn = document.getElementById('btn-start-mfr-background');
+                var helpBrowser = document.getElementById('mfr-help-browser');
+                var helpBackground = document.getElementById('mfr-help-background');
+                if (mode === 'background') {
+                    if (browserBtn) browserBtn.style.display = 'none';
+                    if (backgroundBtn) backgroundBtn.style.display = 'inline-block';
+                    if (helpBrowser) helpBrowser.style.display = 'none';
+                    if (helpBackground) helpBackground.style.display = 'inline';
+                } else {
+                    if (browserBtn) browserBtn.style.display = 'inline-block';
+                    if (backgroundBtn) backgroundBtn.style.display = 'none';
+                    if (helpBrowser) helpBrowser.style.display = 'inline';
+                    if (helpBackground) helpBackground.style.display = 'none';
+                }
+            });
+
+            addEvent('select-all-mfr-languages', 'change', function () {
+                var checked = this.checked;
+                var boxes = document.querySelectorAll('.mfr-lang-checkbox');
+                for (var mi = 0; mi < boxes.length; mi++) {
+                    boxes[mi].checked = checked;
+                }
+            });
+
+            addEvent('select-all-manufacturers', 'click', function () {
+                var rows = document.querySelectorAll('.mfr-list-row');
+                for (var si = 0; si < rows.length; si++) {
+                    if (rows[si].style.display === 'none') {
+                        continue;
+                    }
+                    var cb = rows[si].querySelector('.manufacturer-checkbox');
+                    if (cb) {
+                        cb.checked = true;
+                    }
+                }
+                self.updateManufacturerCount();
+            });
+            addEvent('deselect-all-manufacturers', 'click', function () {
+                var boxes = document.querySelectorAll('.manufacturer-checkbox');
+                for (var dj = 0; dj < boxes.length; dj++) {
+                    boxes[dj].checked = false;
+                }
+                self.updateManufacturerCount();
+            });
+
+            var mfrSearchInput = document.getElementById('manufacturer-search');
+            if (mfrSearchInput) {
+                var mfrSearchTimeout = null;
+                mfrSearchInput.addEventListener('input', function () {
+                    clearTimeout(mfrSearchTimeout);
+                    var q = this.value;
+                    mfrSearchTimeout = setTimeout(function () {
+                        self.filterManufacturers(q);
+                    }, 150);
+                });
+            }
+            addEvent('clear-manufacturer-search', 'click', function () {
+                var minput = document.getElementById('manufacturer-search');
+                if (minput) {
+                    minput.value = '';
+                    self.filterManufacturers('');
+                }
+            });
+
+            var mfrChecks = document.querySelectorAll('.manufacturer-checkbox');
+            for (var mc = 0; mc < mfrChecks.length; mc++) {
+                mfrChecks[mc].addEventListener('change', function () {
+                    self.updateManufacturerCount();
+                });
+            }
 
             // Processing mode toggle
             addEvent('processing-mode-select', 'change', function () {
@@ -105,13 +203,20 @@
             addEvent('btn-test-google-api', 'click', function () {
                 self.testGoogleApiConnection();
             });
+            addEvent('btn-test-google-api-mfr', 'click', function () {
+                self.testGoogleApiConnection();
+            });
 
-            // Google Translate toggle
+            // Google Translate toggle (category + manufacturer panels stay in sync)
             addEvent('use-google-translate', 'change', function () {
-                var details = document.getElementById('google-translate-details');
-                if (details) {
-                    details.style.display = this.checked ? 'block' : 'none';
-                }
+                var other = document.getElementById('use-google-translate-mfr');
+                if (other) other.checked = this.checked;
+                self.applyGoogleTranslateDetailsVisibility();
+            });
+            addEvent('use-google-translate-mfr', 'change', function () {
+                var other = document.getElementById('use-google-translate');
+                if (other) other.checked = this.checked;
+                self.applyGoogleTranslateDetailsVisibility();
             });
 
             // Pause job button
@@ -274,6 +379,7 @@
 
             // Initialize category count and row colors
             this.updateCategoryCount();
+            this.updateManufacturerCount();
             this.applyAlternatingRowColors();
         },
 
@@ -298,6 +404,27 @@
             var countSpan = document.getElementById('selected-categories-count');
             if (countSpan) {
                 countSpan.textContent = count;
+            }
+        },
+
+        updateManufacturerCount: function () {
+            var count = document.querySelectorAll('.manufacturer-checkbox:checked').length;
+            var countSpan = document.getElementById('selected-manufacturers-count');
+            if (countSpan) {
+                countSpan.textContent = count;
+            }
+        },
+
+        filterManufacturers: function (query) {
+            var q = (query || '').toLowerCase().trim();
+            var rows = document.querySelectorAll('.mfr-list-row');
+            for (var i = 0; i < rows.length; i++) {
+                var name = rows[i].getAttribute('data-name') || '';
+                if (!q || name.indexOf(q) !== -1) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
             }
         },
 
@@ -450,10 +577,9 @@
             // Check for Google Translate mode
             var useGoogleTranslate = false;
             var primaryLanguageId = 0;
-            var gtCheckbox = document.getElementById('use-google-translate');
             var primaryLangInput = document.getElementById('primary-language-id');
 
-            if (gtCheckbox && gtCheckbox.checked && primaryLangInput) {
+            if (this.isGoogleTranslateJobOptionEnabled() && primaryLangInput) {
                 useGoogleTranslate = true;
                 primaryLanguageId = parseInt(primaryLangInput.value, 10);
             }
@@ -498,6 +624,90 @@
             });
         },
 
+        startManufacturerGeneration: function (mode) {
+            var self = this;
+
+            if (!mode) {
+                var modeSelect = document.getElementById('mfr-processing-mode-select');
+                mode = modeSelect ? modeSelect.value : 'browser';
+            }
+
+            var mfrBoxes = document.querySelectorAll('.manufacturer-checkbox:checked');
+            var manufacturerIds = [];
+            for (var i = 0; i < mfrBoxes.length; i++) {
+                manufacturerIds.push(mfrBoxes[i].value);
+            }
+
+            if (manufacturerIds.length === 0) {
+                alert('Please select at least one manufacturer');
+                return;
+            }
+
+            var langBoxes = document.querySelectorAll('.mfr-lang-checkbox:checked');
+            var languageIds = [];
+            for (var l = 0; l < langBoxes.length; l++) {
+                languageIds.push(langBoxes[l].value);
+            }
+
+            if (languageIds.length === 0) {
+                alert('Please select at least one language');
+                return;
+            }
+
+            var fieldBoxes = document.querySelectorAll('.mfr-field-checkbox:checked');
+            var fields = [];
+            for (var f = 0; f < fieldBoxes.length; f++) {
+                fields.push(fieldBoxes[f].value);
+            }
+
+            if (fields.length === 0) {
+                alert('Please select at least one field to generate');
+                return;
+            }
+
+            var writeModeEl = document.getElementById('mfr-write-mode-select');
+            var writeMode = writeModeEl ? writeModeEl.value : 'fill_missing';
+
+            var useGoogleTranslate = false;
+            var primaryLanguageId = 0;
+            var primaryLangInput = document.getElementById('primary-language-id');
+
+            if (this.isGoogleTranslateJobOptionEnabled() && primaryLangInput) {
+                useGoogleTranslate = true;
+                primaryLanguageId = parseInt(primaryLangInput.value, 10);
+            }
+
+            var requestData = {
+                manufacturer_ids: manufacturerIds,
+                language_ids: languageIds,
+                fields: fields,
+                write_mode: writeMode
+            };
+
+            if (useGoogleTranslate) {
+                requestData.use_google_translate = 1;
+                requestData.primary_language_id = primaryLanguageId;
+            }
+
+            this.ajaxRequest('createManufacturerJob', requestData, function (response) {
+                if (response.success) {
+                    self.currentJobId = response.job_id;
+
+                    if (mode === 'background') {
+                        alert('Manufacturer job #' + response.job_id + ' created!\n\nThe job is now queued for background processing.\nConfigure cron to process automatically, or resume from the Job Queue panel.');
+                        location.reload();
+                    } else {
+                        self.showProgress();
+                        self.log('Manufacturer job created with ID: ' + response.job_id);
+                        self.log('Starting generation...');
+                        self.processNextBatch();
+                    }
+                } else {
+                    alert('Error: ' + (response.error || 'Unknown'));
+                }
+            });
+        },
+
         processNextBatch: function () {
             var self = this;
 
@@ -517,14 +727,14 @@
                     if (response.batch_results) {
                         for (var i = 0; i < response.batch_results.length; i++) {
                             var result = response.batch_results[i];
-                            // v1.7.0: items now have 'fields' array instead of 'field_type'
                             var fieldInfo = result.fields ? result.fields.join(', ') : (result.field_type || 'all fields');
+                            var entityLabel = result.id_manufacturer ? ('Manufacturer ' + result.id_manufacturer) : ('Category ' + result.id_category);
                             if (result.skipped) {
-                                self.log('⏭ Skipped: Category ' + result.id_category + ', Lang ' + result.id_lang + ' (' + fieldInfo + ')');
+                                self.log('⏭ Skipped: ' + entityLabel + ', Lang ' + result.id_lang + ' (' + fieldInfo + ')');
                             } else if (result.success) {
-                                self.log('✓ Generated: Category ' + result.id_category + ', Lang ' + result.id_lang + ' (' + fieldInfo + ')');
+                                self.log('✓ Generated: ' + entityLabel + ', Lang ' + result.id_lang + ' (' + fieldInfo + ')');
                             } else {
-                                self.log('✗ Error: Category ' + result.id_category + ' - ' + result.error);
+                                self.log('✗ Error: ' + entityLabel + ' - ' + result.error);
                             }
                         }
                     }
@@ -1101,7 +1311,8 @@
             return;
         }
         var panel = document.getElementById('mlcategoryai-batch-panel');
-        if (panel) {
+        var mfrPanel = document.getElementById('mlcategoryai-mfr-batch-panel');
+        if (panel || mfrPanel) {
             window.mlcategoryai_initialized = true;
             console.log('[MLCATAI] Module content found, initializing...');
             MlCategoryAi.init();
@@ -1111,7 +1322,7 @@
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function () {
         // Wait for module panel to exist before initializing
-        waitForElement('#mlcategoryai-batch-panel', initModule);
+        waitForElement('#mlcategoryai-batch-panel, #mlcategoryai-mfr-batch-panel', initModule);
     });
 
     // Also try on window load as fallback

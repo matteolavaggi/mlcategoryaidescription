@@ -53,6 +53,12 @@ class MlCategoryAiJobQueue
     public function __construct($idShop = null)
     {
         $this->idShop = $idShop ? (int) $idShop : (int) Shop::getContextShopID();
+        if ($this->idShop <= 0) {
+            $this->idShop = (int) Configuration::get('PS_SHOP_DEFAULT');
+        }
+        if ($this->idShop <= 0) {
+            $this->idShop = 1;
+        }
     }
 
     /**
@@ -74,20 +80,36 @@ class MlCategoryAiJobQueue
 
         // v1.7.0: Count by category/language pairs, NOT by fields (batched API calls)
         if ($useGoogleTranslate && $primaryLanguageId) {
-            // Phase 1: categories × 1 primary language (OpenAI batch - all fields in 1 call)
-            $openAiItems = count($categoryIds) * 1;
-
-            // Phase 2: categories × target languages (Google Translate batch - all fields in 1 call)
-            $gtItems = count($categoryIds) * count($translateLanguageIds);
-
-            $totalItems = $openAiItems + $gtItems;
+            if ($writeMode === 'fill_missing') {
+                // Real item count (skips categories/langs already filled)
+                $probeJob = [
+                    'entity_type' => Mlcategoryaidescription::ENTITY_CATEGORY,
+                    'category_ids' => array_map('intval', $categoryIds),
+                    'language_ids' => array_map('intval', $languageIds),
+                    'fields_to_generate' => $fieldsToGenerate,
+                    'write_mode' => $writeMode,
+                    'use_google_translate' => true,
+                    'primary_language_id' => (int) $primaryLanguageId,
+                    'translate_language_ids' => array_map('intval', $translateLanguageIds),
+                    'phase' => 'processing',
+                ];
+                $totalItems = count($this->buildItemsList($probeJob));
+            } else {
+                // Overwrite: every category gets primary + each target
+                $totalItems = count($categoryIds) * (1 + count($translateLanguageIds));
+            }
         } else {
             // Simple: categories × languages (all fields in 1 call per category/lang)
             $totalItems = count($categoryIds) * count($languageIds);
         }
 
+        if ($useGoogleTranslate && $primaryLanguageId && $writeMode === 'fill_missing' && $totalItems < 1) {
+            return false;
+        }
+
         $jobData = [
             'id_shop' => (int) $this->idShop,
+            'entity_type' => pSQL(Mlcategoryaidescription::ENTITY_CATEGORY),
             'job_type' => 'batch_generation',
             'status' => self::STATUS_PENDING,
             'total_items' => (int) $totalItems,
@@ -105,6 +127,88 @@ class MlCategoryAiJobQueue
             'current_translate_position' => 0,
             'current_position' => 0,
             'last_processed_category_id' => null,
+            'last_processed_lang_id' => null,
+            'created_at' => date('Y-m-d H:i:s'),
+            'started_at' => null,
+            'completed_at' => null,
+            'updated_at' => date('Y-m-d H:i:s'),
+            'error_log' => null,
+        ];
+
+        $result = Db::getInstance()->insert('mlcategoryai_job_queue', $jobData);
+
+        if (!$result) {
+            return false;
+        }
+
+        return (int) Db::getInstance()->Insert_ID();
+    }
+
+    /**
+     * Batch job for manufacturers (same queue/cron as categories).
+     *
+     * @param array $manufacturerIds
+     * @param array $languageIds
+     * @param array $fieldsToGenerate
+     * @param string $writeMode
+     * @param array $gtOptions
+     *
+     * @return int|false
+     */
+    public function createManufacturerJob($manufacturerIds, $languageIds, $fieldsToGenerate, $writeMode = 'fill_missing', $gtOptions = [])
+    {
+        $useGoogleTranslate = !empty($gtOptions['use_google_translate']);
+        $primaryLanguageId = isset($gtOptions['primary_language_id']) ? (int) $gtOptions['primary_language_id'] : null;
+        $translateLanguageIds = isset($gtOptions['translate_language_ids']) ? $gtOptions['translate_language_ids'] : [];
+
+        if ($useGoogleTranslate && $primaryLanguageId) {
+            if ($writeMode === 'fill_missing') {
+                $probeJob = [
+                    'entity_type' => Mlcategoryaidescription::ENTITY_MANUFACTURER,
+                    'category_ids' => [],
+                    'manufacturer_ids' => array_map('intval', $manufacturerIds),
+                    'language_ids' => array_map('intval', $languageIds),
+                    'fields_to_generate' => $fieldsToGenerate,
+                    'write_mode' => $writeMode,
+                    'use_google_translate' => true,
+                    'primary_language_id' => (int) $primaryLanguageId,
+                    'translate_language_ids' => array_map('intval', $translateLanguageIds),
+                    'phase' => 'processing',
+                ];
+                $totalItems = count($this->buildItemsList($probeJob));
+            } else {
+                $totalItems = count($manufacturerIds) * (1 + count($translateLanguageIds));
+            }
+        } else {
+            $totalItems = count($manufacturerIds) * count($languageIds);
+        }
+
+        if ($useGoogleTranslate && $primaryLanguageId && $writeMode === 'fill_missing' && $totalItems < 1) {
+            return false;
+        }
+
+        $jobData = [
+            'id_shop' => (int) $this->idShop,
+            'entity_type' => pSQL(Mlcategoryaidescription::ENTITY_MANUFACTURER),
+            'job_type' => 'batch_generation',
+            'status' => self::STATUS_PENDING,
+            'total_items' => (int) $totalItems,
+            'processed_items' => 0,
+            'failed_items' => 0,
+            'category_ids' => pSQL(json_encode([])),
+            'manufacturer_ids' => pSQL(json_encode(array_map('intval', $manufacturerIds))),
+            'language_ids' => pSQL(json_encode(array_map('intval', $languageIds))),
+            'fields_to_generate' => pSQL(json_encode($fieldsToGenerate)),
+            'write_mode' => pSQL($writeMode),
+            'use_google_translate' => $useGoogleTranslate ? 1 : 0,
+            'primary_language_id' => $primaryLanguageId,
+            'translate_language_ids' => !empty($translateLanguageIds) ? pSQL(json_encode(array_map('intval', $translateLanguageIds))) : null,
+            'phase' => 'processing',
+            'current_translate_lang_index' => 0,
+            'current_translate_position' => 0,
+            'current_position' => 0,
+            'last_processed_category_id' => null,
+            'last_processed_manufacturer_id' => null,
             'last_processed_lang_id' => null,
             'created_at' => date('Y-m-d H:i:s'),
             'started_at' => null,
@@ -146,6 +250,12 @@ class MlCategoryAiJobQueue
             $result['translate_language_ids'] = !empty($result['translate_language_ids'])
                 ? (json_decode($result['translate_language_ids'], true) ?: [])
                 : [];
+            if (!isset($result['entity_type']) || $result['entity_type'] === '') {
+                $result['entity_type'] = Mlcategoryaidescription::ENTITY_CATEGORY;
+            }
+            $result['manufacturer_ids'] = !empty($result['manufacturer_ids'])
+                ? (json_decode($result['manufacturer_ids'], true) ?: [])
+                : [];
         }
 
         return $result ?: null;
@@ -174,6 +284,12 @@ class MlCategoryAiJobQueue
             $result['use_google_translate'] = !empty($result['use_google_translate']);
             $result['translate_language_ids'] = !empty($result['translate_language_ids'])
                 ? (json_decode($result['translate_language_ids'], true) ?: [])
+                : [];
+            if (!isset($result['entity_type']) || $result['entity_type'] === '') {
+                $result['entity_type'] = Mlcategoryaidescription::ENTITY_CATEGORY;
+            }
+            $result['manufacturer_ids'] = !empty($result['manufacturer_ids'])
+                ? (json_decode($result['manufacturer_ids'], true) ?: [])
                 : [];
         }
 
@@ -204,6 +320,12 @@ class MlCategoryAiJobQueue
                 $result['use_google_translate'] = !empty($result['use_google_translate']);
                 $result['translate_language_ids'] = !empty($result['translate_language_ids'])
                     ? (json_decode($result['translate_language_ids'], true) ?: [])
+                    : [];
+                if (!isset($result['entity_type']) || $result['entity_type'] === '') {
+                    $result['entity_type'] = Mlcategoryaidescription::ENTITY_CATEGORY;
+                }
+                $result['manufacturer_ids'] = !empty($result['manufacturer_ids'])
+                    ? (json_decode($result['manufacturer_ids'], true) ?: [])
                     : [];
             }
         }
@@ -294,6 +416,15 @@ class MlCategoryAiJobQueue
         $currentPosition = (int) $job['current_position'];
         MlCategoryAiLogger::debug('buildItemsList took ' . round((microtime(true) - $t2) * 1000) . 'ms - items=' . count($items));
 
+        // Keep DB total_items in sync with actual work (Google + fill_missing often skips rows)
+        $actualItemCount = count($items);
+        $storedTotal = (int) $job['total_items'];
+        if ($currentPosition === 0 && $actualItemCount !== $storedTotal) {
+            $this->updateJob($idJob, ['total_items' => $actualItemCount]);
+            $job['total_items'] = $actualItemCount;
+            MlCategoryAiLogger::info('Adjusted total_items to ' . $actualItemCount . ' (was ' . $storedTotal . ') for job #' . $idJob);
+        }
+
         // Check if job is complete
         if ($currentPosition >= count($items)) {
             $this->updateJobStatus($idJob, self::STATUS_COMPLETED);
@@ -356,14 +487,22 @@ class MlCategoryAiJobQueue
         // Update job progress
         $t4 = microtime(true);
         $newPosition = $currentPosition + count($batchItems);
-        $this->updateJob($idJob, [
+        $lastItem = end($batchItems);
+        $progressUpdate = [
             'current_position' => $newPosition,
             'processed_items' => (int) $job['processed_items'] + $batchResult['processed'],
             'failed_items' => (int) $job['failed_items'] + $batchResult['failed'],
-            'last_processed_category_id' => end($batchItems)['id_category'],
-            'last_processed_lang_id' => end($batchItems)['id_lang'],
+            'last_processed_lang_id' => (int) $lastItem['id_lang'],
             'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
+        if (!empty($lastItem['id_manufacturer'])) {
+            $progressUpdate['last_processed_manufacturer_id'] = (int) $lastItem['id_manufacturer'];
+            $progressUpdate['last_processed_category_id'] = ['type' => 'sql', 'value' => 'NULL'];
+        } else {
+            $progressUpdate['last_processed_category_id'] = (int) $lastItem['id_category'];
+            $progressUpdate['last_processed_manufacturer_id'] = ['type' => 'sql', 'value' => 'NULL'];
+        }
+        $this->updateJob($idJob, $progressUpdate);
         MlCategoryAiLogger::debug('updateJob took ' . round((microtime(true) - $t4) * 1000) . 'ms');
 
         // Log errors
@@ -399,7 +538,7 @@ class MlCategoryAiJobQueue
             'processed' => (int) $job['processed_items'] + $batchResult['processed'],
             'failed' => (int) $job['failed_items'] + $batchResult['failed'],
             'skipped' => $batchResult['skipped'],
-            'total' => $job['total_items'],
+            'total' => (int) $job['total_items'],
             'current_position' => $newPosition,
             'batch_results' => $batchResult['results'],
             'progress_percent' => $progressPercent,
@@ -455,6 +594,10 @@ class MlCategoryAiJobQueue
             $executionTimeMs = isset($lastBatchResult['time_ms']) ? (int) $lastBatchResult['time_ms'] : 0;
         }
 
+        $entityCount = (isset($job['entity_type']) && $job['entity_type'] === Mlcategoryaidescription::ENTITY_MANUFACTURER)
+            ? count($job['manufacturer_ids'] ?: [])
+            : count($job['category_ids'] ?: []);
+
         // Insert directly to have accurate timing
         Db::getInstance()->insert('mlcategoryai_run_stats', [
             'id_job' => (int) $job['id_job'],
@@ -462,7 +605,7 @@ class MlCategoryAiJobQueue
             'started_at' => pSQL($job['started_at']),
             'completed_at' => date('Y-m-d H:i:s'),
             'execution_time_ms' => (int) $executionTimeMs,
-            'categories_count' => count($job['category_ids']),
+            'categories_count' => (int) $entityCount,
             'languages_count' => count($job['language_ids']),
             'fields_count' => count($job['fields_to_generate']),
             'items_processed' => (int) $job['processed_items'] + $lastBatchResult['processed'],
@@ -477,7 +620,6 @@ class MlCategoryAiJobQueue
     }
 
     /**
-    /**
      * Build flat list of items to process
      * v1.7.0: One item per category/language (all fields bundled)
      *
@@ -488,6 +630,27 @@ class MlCategoryAiJobQueue
     protected function buildItemsList($job)
     {
         $items = [];
+
+        $entityType = isset($job['entity_type']) ? $job['entity_type'] : Mlcategoryaidescription::ENTITY_CATEGORY;
+
+        if ($entityType === Mlcategoryaidescription::ENTITY_MANUFACTURER) {
+            if (!empty($job['use_google_translate']) && !empty($job['primary_language_id'])) {
+                return $this->buildItemsListGoogleTranslateManufacturer($job);
+            }
+            $mfrIds = isset($job['manufacturer_ids']) ? $job['manufacturer_ids'] : [];
+            foreach ($mfrIds as $idMfr) {
+                foreach ($job['language_ids'] as $idLang) {
+                    $items[] = [
+                        'id_manufacturer' => (int) $idMfr,
+                        'id_lang' => (int) $idLang,
+                        'fields' => $job['fields_to_generate'],
+                        'source' => 'openai',
+                    ];
+                }
+            }
+
+            return $items;
+        }
 
         // Check if using Google Translate two-phase processing
         if (!empty($job['use_google_translate']) && !empty($job['primary_language_id'])) {
@@ -531,6 +694,12 @@ class MlCategoryAiJobQueue
         $writeMode = isset($job['write_mode']) ? $job['write_mode'] : 'overwrite';
         $phase = isset($job['phase']) ? $job['phase'] : 'processing';
 
+        $preloadMap = null;
+        if ($writeMode === 'fill_missing') {
+            $langUnion = array_unique(array_merge([$primaryLangId], array_map('intval', $translateLangIds)));
+            $preloadMap = $this->preloadCategoryLangContentMap($job['category_ids'], $langUnion);
+        }
+
         // v1.8.0: translate_only phase - skip OpenAI, only add translation items
         if ($phase === 'translate_only') {
             foreach ($job['category_ids'] as $idCategory) {
@@ -538,7 +707,7 @@ class MlCategoryAiJobQueue
                     // In translate_only mode, check if target needs translation
                     $needsTranslate = true;
                     if ($writeMode === 'fill_missing') {
-                        $needsTranslate = !$this->categoryHasPrimaryContent($idCategory, (int) $targetLangId, $fields);
+                        $needsTranslate = !$this->categoryHasPrimaryContent($idCategory, (int) $targetLangId, $fields, $preloadMap);
                     }
 
                     if ($needsTranslate) {
@@ -562,7 +731,7 @@ class MlCategoryAiJobQueue
             // v1.8.0: Smart fill-missing - check if primary language content exists
             $needsOpenAi = true;
             if ($writeMode === 'fill_missing') {
-                $needsOpenAi = !$this->categoryHasPrimaryContent($idCategory, $primaryLangId, $fields);
+                $needsOpenAi = !$this->categoryHasPrimaryContent($idCategory, $primaryLangId, $fields, $preloadMap);
             }
 
             // 1. First: OpenAI generation for primary language (unless we're filling missing and content exists)
@@ -580,7 +749,7 @@ class MlCategoryAiJobQueue
                 // v1.8.0: In fill_missing mode, check if target language needs translation
                 $needsTranslate = true;
                 if ($writeMode === 'fill_missing') {
-                    $needsTranslate = !$this->categoryHasPrimaryContent($idCategory, (int) $targetLangId, $fields);
+                    $needsTranslate = !$this->categoryHasPrimaryContent($idCategory, (int) $targetLangId, $fields, $preloadMap);
                 }
 
                 if ($needsTranslate) {
@@ -599,6 +768,124 @@ class MlCategoryAiJobQueue
     }
 
     /**
+     * Google Translate interleaved list for manufacturers (same shape as categories).
+     *
+     * @param array $job
+     *
+     * @return array
+     */
+    protected function buildItemsListGoogleTranslateManufacturer($job)
+    {
+        $items = [];
+        $primaryLangId = (int) $job['primary_language_id'];
+        $translateLangIds = $job['translate_language_ids'] ?: [];
+        $fields = $job['fields_to_generate'];
+        $writeMode = isset($job['write_mode']) ? $job['write_mode'] : 'overwrite';
+        $phase = isset($job['phase']) ? $job['phase'] : 'processing';
+        $mfrIds = isset($job['manufacturer_ids']) ? $job['manufacturer_ids'] : [];
+
+        $preloadMap = null;
+        if ($writeMode === 'fill_missing') {
+            $langUnion = array_unique(array_merge([$primaryLangId], array_map('intval', $translateLangIds)));
+            $preloadMap = $this->preloadManufacturerLangContentMap($mfrIds, $langUnion);
+        }
+
+        if ($phase === 'translate_only') {
+            foreach ($mfrIds as $idMfr) {
+                foreach ($translateLangIds as $targetLangId) {
+                    $needsTranslate = true;
+                    if ($writeMode === 'fill_missing') {
+                        $needsTranslate = !$this->manufacturerHasPrimaryContent((int) $idMfr, (int) $targetLangId, $fields, $preloadMap);
+                    }
+                    if ($needsTranslate) {
+                        $items[] = [
+                            'id_manufacturer' => (int) $idMfr,
+                            'id_lang' => (int) $targetLangId,
+                            'fields' => $fields,
+                            'source' => 'google_translate',
+                            'source_lang_id' => $primaryLangId,
+                        ];
+                    }
+                }
+            }
+
+            return $items;
+        }
+
+        foreach ($mfrIds as $idMfr) {
+            $needsOpenAi = true;
+            if ($writeMode === 'fill_missing') {
+                $needsOpenAi = !$this->manufacturerHasPrimaryContent((int) $idMfr, $primaryLangId, $fields, $preloadMap);
+            }
+            if ($needsOpenAi) {
+                $items[] = [
+                    'id_manufacturer' => (int) $idMfr,
+                    'id_lang' => $primaryLangId,
+                    'fields' => $fields,
+                    'source' => 'openai',
+                ];
+            }
+            foreach ($translateLangIds as $targetLangId) {
+                $needsTranslate = true;
+                if ($writeMode === 'fill_missing') {
+                    $needsTranslate = !$this->manufacturerHasPrimaryContent((int) $idMfr, (int) $targetLangId, $fields, $preloadMap);
+                }
+                if ($needsTranslate) {
+                    $items[] = [
+                        'id_manufacturer' => (int) $idMfr,
+                        'id_lang' => (int) $targetLangId,
+                        'fields' => $fields,
+                        'source' => 'google_translate',
+                        'source_lang_id' => $primaryLangId,
+                    ];
+                }
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Preload category_lang rows for many categories and languages (one query).
+     *
+     * @param array $categoryIds
+     * @param array $langIds
+     *
+     * @return array<int, array<int, array>> Map id_category => id_lang => row
+     */
+    protected function preloadCategoryLangContentMap(array $categoryIds, array $langIds)
+    {
+        $categoryIds = array_values(array_unique(array_map('intval', $categoryIds)));
+        $langIds = array_values(array_unique(array_map('intval', $langIds)));
+        if (empty($categoryIds) || empty($langIds)) {
+            return [];
+        }
+
+        $sql = 'SELECT `id_category`, `id_lang`, `description`, `meta_title`, `meta_description`
+                FROM `' . _DB_PREFIX_ . 'category_lang`
+                WHERE `id_shop` = ' . (int) $this->idShop . '
+                AND `id_category` IN (' . implode(',', $categoryIds) . ')
+                AND `id_lang` IN (' . implode(',', $langIds) . ')';
+
+        $rows = Db::getInstance()->executeS($sql);
+        if (!$rows) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($rows as $row) {
+            $ic = (int) $row['id_category'];
+            $il = (int) $row['id_lang'];
+            if (!isset($map[$ic])) {
+                $map[$ic] = [];
+            }
+            $map[$ic][$il] = $row;
+        }
+
+        return $map;
+    }
+
+    /**
      * Check if a category has content in primary fields
      * v1.8.0: Used for smart fill-missing detection
      *
@@ -608,25 +895,40 @@ class MlCategoryAiJobQueue
      * @param int $idCategory
      * @param int $idLang
      * @param array $fields Fields to check (description, meta_title, meta_description)
+     * @param array|null $preloadMap Optional map from preloadCategoryLangContentMap()
      *
      * @return bool True if ALL specified fields have content
      */
-    protected function categoryHasPrimaryContent($idCategory, $idLang, $fields)
+    protected function categoryHasPrimaryContent($idCategory, $idLang, array $fields, $preloadMap = null)
     {
-        // Query database directly to avoid PS language fallback
-        $sql = 'SELECT `description`, `meta_title`, `meta_description`
-                FROM `' . _DB_PREFIX_ . 'category_lang`
-                WHERE `id_category` = ' . (int) $idCategory . '
-                AND `id_lang` = ' . (int) $idLang . '
-                AND `id_shop` = ' . (int) $this->idShop;
+        $row = null;
+        if ($preloadMap !== null && isset($preloadMap[(int) $idCategory][(int) $idLang])) {
+            $row = $preloadMap[(int) $idCategory][(int) $idLang];
+        } else {
+            $sql = 'SELECT `description`, `meta_title`, `meta_description`
+                    FROM `' . _DB_PREFIX_ . 'category_lang`
+                    WHERE `id_category` = ' . (int) $idCategory . '
+                    AND `id_lang` = ' . (int) $idLang . '
+                    AND `id_shop` = ' . (int) $this->idShop;
 
-        $row = Db::getInstance()->getRow($sql);
-
-        if (!$row) {
-            return false; // No row for this language
+            $row = Db::getInstance()->getRow($sql);
         }
 
-        // Check each requested field
+        return $this->categoryLangRowHasFilledFields($row, $fields);
+    }
+
+    /**
+     * @param array|null $row category_lang row
+     * @param array $fields
+     *
+     * @return bool
+     */
+    protected function categoryLangRowHasFilledFields($row, array $fields)
+    {
+        if (empty($row) || !is_array($row)) {
+            return false;
+        }
+
         foreach ($fields as $field) {
             $value = '';
             switch ($field) {
@@ -639,16 +941,140 @@ class MlCategoryAiJobQueue
                 case 'meta_description':
                     $value = isset($row['meta_description']) ? $row['meta_description'] : '';
                     break;
+                default:
+                    $value = '';
             }
 
-            // Strip HTML and check if empty
             $value = trim(strip_tags($value));
-            if (empty($value)) {
-                return false; // At least one field is empty
+            if ($value === '') {
+                return false;
             }
         }
 
-        return true; // All fields have content
+        return true;
+    }
+
+    /**
+     * @param array $manufacturerIds
+     * @param array $langIds
+     *
+     * @return array<int, array<int, array>>
+     */
+    protected function preloadManufacturerLangContentMap(array $manufacturerIds, array $langIds)
+    {
+        $manufacturerIds = array_values(array_unique(array_map('intval', $manufacturerIds)));
+        $langIds = array_values(array_unique(array_map('intval', $langIds)));
+        if (empty($manufacturerIds) || empty($langIds)) {
+            return [];
+        }
+
+        $cols = '`id_manufacturer`, `id_lang`, `description`, `short_description`, `meta_title`, `meta_description`';
+        if (MlCategoryAiGenerator::hasManufacturerMetaKeywordsSupport()) {
+            $cols .= ', `meta_keywords`';
+        }
+
+        $sql = 'SELECT ' . $cols . '
+                FROM `' . _DB_PREFIX_ . 'manufacturer_lang`
+                WHERE `id_manufacturer` IN (' . implode(',', $manufacturerIds) . ')
+                AND `id_lang` IN (' . implode(',', $langIds) . ')';
+        if (MlCategoryAiGenerator::manufacturerLangTableHasIdShop()) {
+            $sql .= ' AND `id_shop` = ' . (int) $this->idShop;
+        }
+
+        $rows = Db::getInstance()->executeS($sql);
+        if (!$rows) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($rows as $row) {
+            $im = (int) $row['id_manufacturer'];
+            $il = (int) $row['id_lang'];
+            if (!isset($map[$im])) {
+                $map[$im] = [];
+            }
+            $map[$im][$il] = $row;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param int $idManufacturer
+     * @param int $idLang
+     * @param array $fields
+     * @param array|null $preloadMap
+     *
+     * @return bool
+     */
+    protected function manufacturerHasPrimaryContent($idManufacturer, $idLang, array $fields, $preloadMap = null)
+    {
+        $row = null;
+        if ($preloadMap !== null && isset($preloadMap[(int) $idManufacturer][(int) $idLang])) {
+            $row = $preloadMap[(int) $idManufacturer][(int) $idLang];
+        } else {
+            $cols = '`description`, `short_description`, `meta_title`, `meta_description`';
+            if (MlCategoryAiGenerator::hasManufacturerMetaKeywordsSupport()) {
+                $cols .= ', `meta_keywords`';
+            }
+            $sql = 'SELECT ' . $cols . '
+                    FROM `' . _DB_PREFIX_ . 'manufacturer_lang`
+                    WHERE `id_manufacturer` = ' . (int) $idManufacturer . '
+                    AND `id_lang` = ' . (int) $idLang;
+            if (MlCategoryAiGenerator::manufacturerLangTableHasIdShop()) {
+                $sql .= ' AND `id_shop` = ' . (int) $this->idShop;
+            }
+            $row = Db::getInstance()->getRow($sql);
+        }
+
+        return $this->manufacturerLangRowHasFilledFields($row, $fields);
+    }
+
+    /**
+     * @param array|null $row
+     * @param array $fields
+     *
+     * @return bool
+     */
+    protected function manufacturerLangRowHasFilledFields($row, array $fields)
+    {
+        if (empty($row) || !is_array($row)) {
+            return false;
+        }
+
+        foreach ($fields as $field) {
+            if ($field === Mlcategoryaidescription::FIELD_META_KEYWORDS
+                && !MlCategoryAiGenerator::hasManufacturerMetaKeywordsSupport()) {
+                continue;
+            }
+            $value = '';
+            switch ($field) {
+                case 'description':
+                    $value = isset($row['description']) ? $row['description'] : '';
+                    break;
+                case 'short_description':
+                    $value = isset($row['short_description']) ? $row['short_description'] : '';
+                    break;
+                case 'meta_title':
+                    $value = isset($row['meta_title']) ? $row['meta_title'] : '';
+                    break;
+                case 'meta_description':
+                    $value = isset($row['meta_description']) ? $row['meta_description'] : '';
+                    break;
+                case 'meta_keywords':
+                    $value = isset($row['meta_keywords']) ? $row['meta_keywords'] : '';
+                    break;
+                default:
+                    $value = '';
+            }
+
+            $value = trim(strip_tags($value));
+            if ($value === '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -721,12 +1147,27 @@ class MlCategoryAiJobQueue
             return false; // Nothing to translate
         }
 
-        // Build items list - only translation items, no OpenAI
-        $totalItems = count($categoryIds) * count($targetLangIds);
+        $probeJob = [
+            'entity_type' => Mlcategoryaidescription::ENTITY_CATEGORY,
+            'category_ids' => array_map('intval', $categoryIds),
+            'language_ids' => array_map('intval', $targetLangIds),
+            'fields_to_generate' => $fields,
+            'write_mode' => $writeMode,
+            'use_google_translate' => true,
+            'primary_language_id' => (int) $primaryLangId,
+            'translate_language_ids' => array_map('intval', $targetLangIds),
+            'phase' => 'translate_only',
+        ];
+        $totalItems = count($this->buildItemsList($probeJob));
+
+        if ($totalItems < 1) {
+            return false;
+        }
 
         // Create the job
         $result = Db::getInstance()->insert('mlcategoryai_job_queue', [
             'id_shop' => (int) $this->idShop,
+            'entity_type' => pSQL(Mlcategoryaidescription::ENTITY_CATEGORY),
             'category_ids' => pSQL(json_encode($categoryIds)),
             'language_ids' => pSQL(json_encode($targetLangIds)), // Target languages
             'fields_to_generate' => pSQL(json_encode($fields)),
@@ -864,7 +1305,8 @@ class MlCategoryAiJobQueue
             return false;
         }
 
-        return $this->updateJobStatus($idJob, self::STATUS_RUNNING);
+        // Pending so the next processNextBatch sets running + started_at (was incorrectly set to running here)
+        return $this->updateJobStatus($idJob, self::STATUS_PENDING);
     }
 
     /**
@@ -944,7 +1386,7 @@ class MlCategoryAiJobQueue
     protected function processParallelBatch($batchItems, $module, $job)
     {
         $startTime = microtime(true);
-        $generator = new MlCategoryAiGenerator($module);
+        $generator = new MlCategoryAiGenerator($module, $this->idShop);
         $client = MlCategoryAiClient::createFromConfig($module);
 
         // Prepare all requests
@@ -1119,7 +1561,7 @@ class MlCategoryAiJobQueue
     protected function processSequentialBatch($batchItems, $module, $job, $idJob)
     {
         $startTime = microtime(true);
-        $generator = new MlCategoryAiGenerator($module);
+        $generator = new MlCategoryAiGenerator($module, $this->idShop);
         $requestDelay = (int) Configuration::get(Mlcategoryaidescription::CONFIG_REQUEST_DELAY);
 
         $processed = 0;
@@ -1130,12 +1572,30 @@ class MlCategoryAiJobQueue
         $tokensInput = 0;
         $tokensOutput = 0;
 
+        $entityType = isset($job['entity_type']) ? $job['entity_type'] : Mlcategoryaidescription::ENTITY_CATEGORY;
+
         foreach ($batchItems as $index => $item) {
             try {
                 $source = isset($item['source']) ? $item['source'] : 'openai';
 
-                // v1.7.0: Items now contain 'fields' array instead of single 'field_type'
-                if ($source === 'google_translate') {
+                if ($entityType === Mlcategoryaidescription::ENTITY_MANUFACTURER) {
+                    if ($source === 'google_translate') {
+                        $result = $generator->translateManufacturerBatch(
+                            (int) $item['id_manufacturer'],
+                            (int) $item['id_lang'],
+                            $item['fields'],
+                            (int) $item['source_lang_id'],
+                            $job['write_mode']
+                        );
+                    } else {
+                        $result = $generator->generateManufacturerBatch(
+                            (int) $item['id_manufacturer'],
+                            (int) $item['id_lang'],
+                            $item['fields'],
+                            $job['write_mode']
+                        );
+                    }
+                } elseif ($source === 'google_translate') {
                     // Google Translate: translate all fields from primary language
                     $result = $generator->translateCategoryBatch(
                         (int) $item['id_category'],
@@ -1163,9 +1623,7 @@ class MlCategoryAiJobQueue
                 ];
             }
 
-            // Build result entry (one per category/language)
-            $results[] = [
-                'id_category' => $item['id_category'],
+            $resultRow = [
                 'id_lang' => $item['id_lang'],
                 'fields' => $item['fields'],
                 'source' => $source,
@@ -1174,6 +1632,12 @@ class MlCategoryAiJobQueue
                 'error' => isset($result['error']) ? $result['error'] : '',
                 'field_results' => isset($result['results']) ? $result['results'] : [],
             ];
+            if ($entityType === Mlcategoryaidescription::ENTITY_MANUFACTURER) {
+                $resultRow['id_manufacturer'] = $item['id_manufacturer'];
+            } else {
+                $resultRow['id_category'] = $item['id_category'];
+            }
+            $results[] = $resultRow;
 
             if (isset($result['skipped']) && $result['skipped']) {
                 ++$skipped;
@@ -1184,13 +1648,23 @@ class MlCategoryAiJobQueue
                 $tokensOutput += isset($result['tokens']) ? (int) ($result['tokens'] * 0.3) : 0;
             } else {
                 ++$failed;
-                $errors[] = sprintf(
-                    'Category %d, Lang %d (%s): %s',
-                    $item['id_category'],
-                    $item['id_lang'],
-                    $source,
-                    isset($result['error']) ? $result['error'] : 'Unknown error'
-                );
+                if ($entityType === Mlcategoryaidescription::ENTITY_MANUFACTURER) {
+                    $errors[] = sprintf(
+                        'Manufacturer %d, Lang %d (%s): %s',
+                        $item['id_manufacturer'],
+                        $item['id_lang'],
+                        $source,
+                        isset($result['error']) ? $result['error'] : 'Unknown error'
+                    );
+                } else {
+                    $errors[] = sprintf(
+                        'Category %d, Lang %d (%s): %s',
+                        $item['id_category'],
+                        $item['id_lang'],
+                        $source,
+                        isset($result['error']) ? $result['error'] : 'Unknown error'
+                    );
+                }
             }
 
             // Delay between requests (except for last item)

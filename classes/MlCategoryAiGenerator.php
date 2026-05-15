@@ -27,6 +27,7 @@ require_once dirname(__FILE__) . '/MlCategoryAiClient.php';
 require_once dirname(__FILE__) . '/MlCategoryAiPlaceholder.php';
 require_once dirname(__FILE__) . '/MlCategoryAiLogger.php';
 require_once dirname(__FILE__) . '/MlCategoryAiTranslator.php';
+require_once dirname(__FILE__) . '/MlManufacturerAiPlaceholder.php';
 
 /**
  * Content generator for categories using AI
@@ -54,6 +55,11 @@ class MlCategoryAiGenerator
     protected static $hasMetaKeywordsColumn = null;
 
     /**
+     * @var bool|null Cache: manufacturer_lang has id_shop (multistore)
+     */
+    protected static $manufacturerLangHasIdShop = null;
+
+    /**
      * Check if meta_keywords column exists in category_lang table
      * PS9+ removed this column
      *
@@ -72,6 +78,37 @@ class MlCategoryAiGenerator
     }
 
     /**
+     * @return bool
+     */
+    public static function hasManufacturerMetaKeywordsSupport()
+    {
+        static $has = null;
+        if ($has === null) {
+            $columns = Db::getInstance()->executeS(
+                'SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'manufacturer_lang` LIKE \'meta_keywords\''
+            );
+            $has = !empty($columns);
+        }
+
+        return $has;
+    }
+
+    /**
+     * @return bool
+     */
+    public static function manufacturerLangTableHasIdShop()
+    {
+        if (self::$manufacturerLangHasIdShop === null) {
+            $rows = Db::getInstance()->executeS(
+                'SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'manufacturer_lang` WHERE Field = \'id_shop\''
+            );
+            self::$manufacturerLangHasIdShop = !empty($rows);
+        }
+
+        return self::$manufacturerLangHasIdShop;
+    }
+
+    /**
      * Constructor
      *
      * @param Module $module
@@ -82,6 +119,12 @@ class MlCategoryAiGenerator
         $this->module = $module;
         $this->client = MlCategoryAiClient::createFromConfig($module);
         $this->idShop = $idShop ? (int) $idShop : (int) Shop::getContextShopID();
+        if ($this->idShop <= 0) {
+            $this->idShop = (int) Configuration::get('PS_SHOP_DEFAULT');
+        }
+        if ($this->idShop <= 0) {
+            $this->idShop = 1;
+        }
     }
 
     /**
@@ -463,6 +506,8 @@ class MlCategoryAiGenerator
             $fieldPrompts[$fieldType] = $resolvedPrompt;
         }
 
+        $this->appendMtgCategoryPatternHints($fieldPrompts, (int) $idLang);
+
         // If all fields were skipped, return success
         if (empty($fieldPrompts)) {
             $result['success'] = true;
@@ -548,9 +593,71 @@ class MlCategoryAiGenerator
         $prompt .= "Return a JSON object with these exact keys: " . json_encode(array_keys($fieldPrompts)) . "\n";
         $prompt .= "Each value should be the generated content for that field.\n";
         $prompt .= "For 'description': use HTML tags (<p>, <h2>, <strong>, <ul>, <li>). Do NOT use Markdown.\n";
+        if (isset($fieldPrompts[Mlcategoryaidescription::FIELD_SHORT_DESCRIPTION])) {
+            $prompt .= "For 'short_description': a single plain-text line only (no HTML), as instructed in that field block.\n";
+        }
         $prompt .= "For other fields: plain text only, no HTML, no Markdown.\n";
 
         return $prompt;
+    }
+
+    /**
+     * Append MTG_SAVED_PATTERNS length/template hints for meta_* fields (shared).
+     *
+     * @param array<string, string> $fieldPrompts
+     * @param array<string, array{active: bool, value: string, length: int}> $rules
+     *
+     * @return void
+     */
+    protected function appendMtgPatternHintsToFieldPrompts(array &$fieldPrompts, array $rules)
+    {
+        if (empty($rules)) {
+            return;
+        }
+
+        foreach ($fieldPrompts as $fieldType => &$resolved) {
+            if (empty($rules[$fieldType]) || !$rules[$fieldType]['active']) {
+                continue;
+            }
+            $len = (int) $rules[$fieldType]['length'];
+            $pat = $rules[$fieldType]['value'];
+            $resolved .= "\n\n--- Metatags Generator (shop pattern for this language) ---\n";
+            $resolved .= 'Maximum length (characters): ' . $len . "\n";
+            $resolved .= 'Reference template (MTG placeholders e.g. {name}, {description}, {description_short}, {auto_keywords}, {shop_name}): ' . $pat . "\n";
+            $resolved .= "Respect the length limit. Mirror the marketing intent and 'slots' of the template using the context in the prompts above (plain text for meta fields).\n";
+        }
+        unset($resolved);
+    }
+
+    /**
+     * Append Metatags Generator (MTG_SAVED_PATTERNS) constraints for category meta fields.
+     *
+     * @param array<string, string> $fieldPrompts
+     * @param int $idLang
+     *
+     * @return void
+     */
+    protected function appendMtgCategoryPatternHints(array &$fieldPrompts, $idLang)
+    {
+        require_once dirname(__FILE__) . '/MtgSavedPatternsParser.php';
+        $rules = MtgSavedPatternsParser::getMtgRulesForMlCategoryFields((int) $idLang);
+        $this->appendMtgPatternHintsToFieldPrompts($fieldPrompts, $rules);
+    }
+
+    /**
+     * Append Metatags Generator (MTG_SAVED_PATTERNS) constraints for manufacturer meta fields
+     * so the LLM sees the same length / template structure as the SEO module.
+     *
+     * @param array<string, string> $fieldPrompts
+     * @param int $idLang
+     *
+     * @return void
+     */
+    protected function appendMtgManufacturerPatternHints(array &$fieldPrompts, $idLang)
+    {
+        require_once dirname(__FILE__) . '/MtgSavedPatternsParser.php';
+        $rules = MtgSavedPatternsParser::getMtgRulesForMlManufacturerFields((int) $idLang);
+        $this->appendMtgPatternHintsToFieldPrompts($fieldPrompts, $rules);
     }
 
     /**
@@ -611,6 +718,440 @@ class MlCategoryAiGenerator
         $result['success'] = true;
 
         return $result;
+    }
+
+    /**
+     * Generate all manufacturer fields in one JSON API call.
+     *
+     * @param int $idManufacturer
+     * @param int $idLang
+     * @param array $fields
+     * @param string $writeMode
+     *
+     * @return array
+     */
+    public function generateManufacturerBatch($idManufacturer, $idLang, array $fields, $writeMode = 'fill_missing')
+    {
+        $t0 = microtime(true);
+
+        $result = [
+            'success' => false,
+            'results' => [],
+            'error' => '',
+            'tokens' => 0,
+            'skipped' => false,
+            'skipped_fields' => [],
+        ];
+
+        $manufacturer = new Manufacturer((int) $idManufacturer, (int) $idLang);
+        if (!Validate::isLoadedObject($manufacturer)) {
+            $result['error'] = 'Manufacturer not found: ' . $idManufacturer;
+            MlCategoryAiLogger::error('Manufacturer not found: ' . $idManufacturer);
+
+            return $result;
+        }
+
+        $placeholder = new MlManufacturerAiPlaceholder($idManufacturer, $idLang, $this->idShop);
+        $fieldPrompts = [];
+        $skippedFields = [];
+
+        foreach ($fields as $fieldType) {
+            if ($fieldType === Mlcategoryaidescription::FIELD_LINK_REWRITE) {
+                continue;
+            }
+            if ($fieldType === Mlcategoryaidescription::FIELD_META_KEYWORDS
+                && !self::hasManufacturerMetaKeywordsSupport()) {
+                $skippedFields[] = $fieldType;
+                continue;
+            }
+
+            if ($writeMode === Mlcategoryaidescription::WRITE_MODE_FILL_MISSING) {
+                $existing = $this->getManufacturerLangFieldFromDb((int) $idManufacturer, (int) $idLang, $fieldType);
+                if (!empty(trim(strip_tags($existing)))) {
+                    $skippedFields[] = $fieldType;
+                    continue;
+                }
+            }
+
+            $template = $this->getPromptTemplate($fieldType, $idLang, Mlcategoryaidescription::ENTITY_MANUFACTURER);
+            if (empty($template)) {
+                MlCategoryAiLogger::warning('No manufacturer prompt for field=' . $fieldType . ' lang=' . $idLang);
+                continue;
+            }
+
+            $fieldPrompts[$fieldType] = $placeholder->resolve($template);
+        }
+
+        $this->appendMtgManufacturerPatternHints($fieldPrompts, (int) $idLang);
+
+        if (empty($fieldPrompts)) {
+            $result['success'] = true;
+            $result['skipped'] = true;
+            $result['skipped_fields'] = $skippedFields;
+
+            return $result;
+        }
+
+        $combinedPrompt = $this->buildCombinedJsonPrompt($fieldPrompts, $idLang, $placeholder);
+        $response = $this->client->generateJson($combinedPrompt);
+
+        if ($response === false) {
+            $result['error'] = $this->client->getLastError();
+
+            return $result;
+        }
+
+        $saveResult = $this->parseAndSaveManufacturerBatchResults($response, $manufacturer, $fieldPrompts, $idLang);
+        $saveResult['skipped_fields'] = $skippedFields;
+        $saveResult['tokens'] = $this->client->getLastTokensUsed();
+        MlCategoryAiLogger::debug('generateManufacturerBatch completed', [
+            'manufacturer_id' => $idManufacturer,
+            'lang_id' => $idLang,
+            'ms' => round((microtime(true) - $t0) * 1000),
+        ]);
+
+        return $saveResult;
+    }
+
+    /**
+     * @param array $jsonData
+     * @param Manufacturer $manufacturer
+     * @param array $fieldPrompts
+     * @param int $idLang
+     *
+     * @return array
+     */
+    protected function parseAndSaveManufacturerBatchResults($jsonData, $manufacturer, array $fieldPrompts, $idLang)
+    {
+        $result = [
+            'success' => false,
+            'results' => [],
+            'error' => '',
+        ];
+
+        foreach (array_keys($fieldPrompts) as $fieldType) {
+            if (!isset($jsonData[$fieldType])) {
+                $result['error'] = 'Missing field in JSON response: ' . $fieldType;
+
+                return $result;
+            }
+        }
+
+        foreach (array_keys($fieldPrompts) as $fieldType) {
+            $content = $this->cleanContent($jsonData[$fieldType], $fieldType);
+            $updateResult = $this->updateManufacturerField($manufacturer, $fieldType, $content, $idLang);
+            $result['results'][$fieldType] = $updateResult ? 'success' : 'failed';
+
+            if ($updateResult) {
+                $this->logGenerationEntry(
+                    Mlcategoryaidescription::ENTITY_MANUFACTURER,
+                    $idLang,
+                    $fieldType,
+                    'success',
+                    '',
+                    $this->client->getLastTokensUsed(),
+                    null,
+                    $manufacturer->id
+                );
+            } else {
+                $this->logGenerationEntry(
+                    Mlcategoryaidescription::ENTITY_MANUFACTURER,
+                    $idLang,
+                    $fieldType,
+                    'error',
+                    'Failed to update field',
+                    0,
+                    null,
+                    $manufacturer->id
+                );
+            }
+        }
+
+        $result['success'] = true;
+
+        return $result;
+    }
+
+    /**
+     * Translate manufacturer fields (batched Google Translate).
+     *
+     * @param int $idManufacturer
+     * @param int $idTargetLang
+     * @param array $fields
+     * @param int $idSourceLang
+     * @param string $writeMode
+     *
+     * @return array
+     */
+    public function translateManufacturerBatch($idManufacturer, $idTargetLang, array $fields, $idSourceLang, $writeMode = 'fill_missing')
+    {
+        $result = [
+            'success' => false,
+            'results' => [],
+            'chars_translated' => 0,
+            'skipped' => false,
+            'skipped_fields' => [],
+            'error' => '',
+        ];
+
+        $sourceM = new Manufacturer((int) $idManufacturer, (int) $idSourceLang);
+        $targetM = new Manufacturer((int) $idManufacturer, (int) $idTargetLang);
+
+        if (!Validate::isLoadedObject($sourceM) || !Validate::isLoadedObject($targetM)) {
+            $result['error'] = 'Manufacturer not found';
+
+            return $result;
+        }
+
+        $textsToTranslate = [];
+        $skippedFields = [];
+
+        foreach ($fields as $fieldType) {
+            if ($fieldType === Mlcategoryaidescription::FIELD_META_KEYWORDS
+                && !self::hasManufacturerMetaKeywordsSupport()) {
+                $skippedFields[] = $fieldType;
+                continue;
+            }
+
+            if ($writeMode === Mlcategoryaidescription::WRITE_MODE_FILL_MISSING) {
+                $existing = $this->getManufacturerLangFieldFromDb((int) $idManufacturer, (int) $idTargetLang, $fieldType);
+                if (!empty(trim(strip_tags($existing)))) {
+                    $skippedFields[] = $fieldType;
+                    continue;
+                }
+            }
+
+            $sourceText = $this->getManufacturerLangFieldFromDb((int) $idManufacturer, (int) $idSourceLang, $fieldType);
+            if (!empty(trim(strip_tags($sourceText)))) {
+                $textsToTranslate[$fieldType] = $sourceText;
+            }
+        }
+
+        $result['skipped_fields'] = $skippedFields;
+
+        if (empty($textsToTranslate)) {
+            $result['success'] = true;
+            $result['skipped'] = true;
+
+            return $result;
+        }
+
+        $sourceIso = Language::getIsoById($idSourceLang);
+        $targetIso = Language::getIsoById($idTargetLang);
+
+        if (!$sourceIso || !$targetIso) {
+            $result['error'] = 'Could not get language ISO codes';
+
+            return $result;
+        }
+
+        $translator = MlCategoryAiTranslator::createFromConfig($this->module);
+        $translations = $translator->translateBatch(
+            array_values($textsToTranslate),
+            $sourceIso,
+            $targetIso,
+            'html'
+        );
+
+        if ($translations === false) {
+            $result['error'] = 'Translation failed: ' . $translator->getLastError();
+
+            return $result;
+        }
+
+        $fieldKeys = array_keys($textsToTranslate);
+        foreach ($translations as $index => $translatedText) {
+            $fieldType = $fieldKeys[$index];
+            if ($fieldType !== Mlcategoryaidescription::FIELD_DESCRIPTION) {
+                $translatedText = strip_tags($translatedText);
+                $translatedText = html_entity_decode($translatedText, ENT_QUOTES, 'UTF-8');
+            }
+
+            $updateResult = $this->updateManufacturerField($targetM, $fieldType, $translatedText, $idTargetLang);
+            $result['results'][$fieldType] = $updateResult ? 'success' : 'failed';
+        }
+
+        $result['success'] = true;
+        $result['chars_translated'] = $translator->getLastCharactersTranslated();
+
+        return $result;
+    }
+
+    /**
+     * WHERE clause for manufacturer_lang row (multistore-aware).
+     *
+     * @param int $idManufacturer
+     * @param int $idLang
+     *
+     * @return string
+     */
+    protected function manufacturerLangSqlWhere($idManufacturer, $idLang)
+    {
+        $w = '`id_manufacturer` = ' . (int) $idManufacturer . ' AND `id_lang` = ' . (int) $idLang;
+        if (self::manufacturerLangTableHasIdShop()) {
+            $w .= ' AND `id_shop` = ' . (int) $this->idShop;
+        }
+
+        return $w;
+    }
+
+    /**
+     * Ensure a manufacturer_lang row exists so UPDATE is not a no-op.
+     *
+     * @param int $idManufacturer
+     * @param int $idLang
+     *
+     * @return bool
+     */
+    protected function ensureManufacturerLangRowExists($idManufacturer, $idLang)
+    {
+        $idManufacturer = (int) $idManufacturer;
+        $idLang = (int) $idLang;
+        if ($idManufacturer <= 0 || $idLang <= 0) {
+            return false;
+        }
+
+        $exists = (int) Db::getInstance()->getValue(
+            'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'manufacturer_lang`
+            WHERE ' . $this->manufacturerLangSqlWhere($idManufacturer, $idLang)
+        );
+        if ($exists > 0) {
+            return true;
+        }
+
+        $data = [
+            'id_manufacturer' => $idManufacturer,
+            'id_lang' => $idLang,
+            'description' => '',
+            'short_description' => '',
+            'meta_title' => '',
+            'meta_description' => '',
+        ];
+        if (self::hasManufacturerMetaKeywordsSupport()) {
+            $data['meta_keywords'] = '';
+        }
+        if (self::manufacturerLangTableHasIdShop()) {
+            $data['id_shop'] = (int) $this->idShop;
+        }
+
+        $inserted = (bool) Db::getInstance()->insert('manufacturer_lang', $data);
+        if ($inserted) {
+            return true;
+        }
+
+        $existsAfter = (int) Db::getInstance()->getValue(
+            'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'manufacturer_lang`
+            WHERE ' . $this->manufacturerLangSqlWhere($idManufacturer, $idLang)
+        );
+
+        return $existsAfter > 0;
+    }
+
+    /**
+     * Read field text for exact manufacturer + language from DB (no ObjectModel fallback).
+     *
+     * @param int $idManufacturer
+     * @param int $idLang
+     * @param string $fieldType
+     *
+     * @return string
+     */
+    protected function getManufacturerLangFieldFromDb($idManufacturer, $idLang, $fieldType)
+    {
+        $fieldMap = [
+            Mlcategoryaidescription::FIELD_DESCRIPTION => 'description',
+            Mlcategoryaidescription::FIELD_SHORT_DESCRIPTION => 'short_description',
+            Mlcategoryaidescription::FIELD_META_TITLE => 'meta_title',
+            Mlcategoryaidescription::FIELD_META_DESCRIPTION => 'meta_description',
+            Mlcategoryaidescription::FIELD_META_KEYWORDS => 'meta_keywords',
+        ];
+        if (!isset($fieldMap[$fieldType])) {
+            return '';
+        }
+        if ($fieldType === Mlcategoryaidescription::FIELD_META_KEYWORDS && !self::hasManufacturerMetaKeywordsSupport()) {
+            return '';
+        }
+
+        $col = $fieldMap[$fieldType];
+        $sql = 'SELECT `' . bqSQL($col) . '` FROM `' . _DB_PREFIX_ . 'manufacturer_lang`
+                WHERE ' . $this->manufacturerLangSqlWhere((int) $idManufacturer, (int) $idLang);
+        $val = Db::getInstance()->getValue($sql);
+
+        return $val !== false && $val !== null ? (string) $val : '';
+    }
+
+    /**
+     * @param Manufacturer $manufacturer
+     * @param string $fieldType
+     *
+     * @return string
+     */
+    protected function getFieldValueManufacturer($manufacturer, $fieldType)
+    {
+        switch ($fieldType) {
+            case Mlcategoryaidescription::FIELD_DESCRIPTION:
+                return $manufacturer->description ?: '';
+            case Mlcategoryaidescription::FIELD_SHORT_DESCRIPTION:
+                return $manufacturer->short_description ?: '';
+            case Mlcategoryaidescription::FIELD_META_TITLE:
+                return $manufacturer->meta_title ?: '';
+            case Mlcategoryaidescription::FIELD_META_DESCRIPTION:
+                return $manufacturer->meta_description ?: '';
+            case Mlcategoryaidescription::FIELD_META_KEYWORDS:
+                return $manufacturer->meta_keywords ?: '';
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * @param Manufacturer $manufacturer
+     * @param string $fieldType
+     * @param string $content
+     * @param int $idLang
+     *
+     * @return bool
+     */
+    protected function updateManufacturerField($manufacturer, $fieldType, $content, $idLang)
+    {
+        if ($fieldType === Mlcategoryaidescription::FIELD_META_KEYWORDS && !self::hasManufacturerMetaKeywordsSupport()) {
+            return true;
+        }
+
+        $fieldMap = [
+            Mlcategoryaidescription::FIELD_DESCRIPTION => 'description',
+            Mlcategoryaidescription::FIELD_SHORT_DESCRIPTION => 'short_description',
+            Mlcategoryaidescription::FIELD_META_TITLE => 'meta_title',
+            Mlcategoryaidescription::FIELD_META_DESCRIPTION => 'meta_description',
+            Mlcategoryaidescription::FIELD_META_KEYWORDS => 'meta_keywords',
+        ];
+
+        if (!isset($fieldMap[$fieldType])) {
+            return false;
+        }
+
+        $dbField = $fieldMap[$fieldType];
+        $isHtml = in_array($fieldType, [
+            Mlcategoryaidescription::FIELD_DESCRIPTION,
+            Mlcategoryaidescription::FIELD_SHORT_DESCRIPTION,
+        ], true);
+
+        if (!$this->ensureManufacturerLangRowExists((int) $manufacturer->id, (int) $idLang)) {
+            MlCategoryAiLogger::error('ensureManufacturerLangRowExists failed for manufacturer_lang', [
+                'id_manufacturer' => (int) $manufacturer->id,
+                'id_lang' => (int) $idLang,
+            ]);
+
+            return false;
+        }
+
+        return Db::getInstance()->update(
+            'manufacturer_lang',
+            [
+                $dbField => pSQL($content, $isHtml),
+            ],
+            $this->manufacturerLangSqlWhere((int) $manufacturer->id, (int) $idLang)
+        );
     }
 
     /**
@@ -796,8 +1337,11 @@ class MlCategoryAiGenerator
      *
      * @return string
      */
-    protected function getPromptTemplate($fieldType, $idLang)
+    protected function getPromptTemplate($fieldType, $idLang, $entityType = null)
     {
+        if ($entityType === null) {
+            $entityType = Mlcategoryaidescription::ENTITY_CATEGORY;
+        }
         // Ensure we have valid values
         $fieldType = (string) $fieldType;
         $idLang = (int) $idLang;
@@ -825,6 +1369,7 @@ class MlCategoryAiGenerator
         $query->from('mlcategoryai_prompt_template', 'pt');
         $query->innerJoin('mlcategoryai_prompt_template_lang', 'ptl', 'pt.`id_prompt_template` = ptl.`id_prompt_template`');
         $query->where('pt.`field_type` = "' . pSQL($fieldType) . '"');
+        $query->where('pt.`entity_type` = "' . pSQL($entityType) . '"');
         $query->where('pt.`is_active` = 1');
         $query->where('pt.`id_shop` = ' . $idShop);
         $query->where('ptl.`id_lang` = ' . $idLang);
@@ -848,6 +1393,7 @@ class MlCategoryAiGenerator
             $query->from('mlcategoryai_prompt_template', 'pt');
             $query->innerJoin('mlcategoryai_prompt_template_lang', 'ptl', 'pt.`id_prompt_template` = ptl.`id_prompt_template`');
             $query->where('pt.`field_type` = "' . pSQL($fieldType) . '"');
+            $query->where('pt.`entity_type` = "' . pSQL($entityType) . '"');
             $query->where('pt.`is_active` = 1');
             $query->where('pt.`id_shop` = ' . $idShop);
             $query->where('ptl.`id_lang` = ' . $defaultLang);
@@ -867,6 +1413,7 @@ class MlCategoryAiGenerator
             $query->from('mlcategoryai_prompt_template', 'pt');
             $query->innerJoin('mlcategoryai_prompt_template_lang', 'ptl', 'pt.`id_prompt_template` = ptl.`id_prompt_template`');
             $query->where('pt.`field_type` = "' . pSQL($fieldType) . '"');
+            $query->where('pt.`entity_type` = "' . pSQL($entityType) . '"');
             $query->where('pt.`is_active` = 1');
             $query->orderBy('pt.`id_prompt_template` ASC');
 
@@ -900,19 +1447,9 @@ class MlCategoryAiGenerator
 
         switch ($fieldType) {
             case Mlcategoryaidescription::FIELD_META_TITLE:
-                // Strip any HTML/Markdown and limit to 70 characters
-                $content = strip_tags($content);
-                $content = mb_substr($content, 0, 70);
-                break;
-
             case Mlcategoryaidescription::FIELD_META_DESCRIPTION:
-                // Strip any HTML/Markdown and limit to 160 characters
-                $content = strip_tags($content);
-                $content = mb_substr($content, 0, 160);
-                break;
-
             case Mlcategoryaidescription::FIELD_META_KEYWORDS:
-                // Strip any HTML/Markdown
+            case Mlcategoryaidescription::FIELD_SHORT_DESCRIPTION:
                 $content = strip_tags($content);
                 break;
 
@@ -1042,20 +1579,54 @@ class MlCategoryAiGenerator
      *
      * @return bool
      */
-    protected function logGeneration($idCategory, $idLang, $fieldType, $status, $errorMessage = '', $tokensUsed = 0)
+    protected function logGenerationEntry($entityType, $idLang, $fieldType, $status, $errorMessage = '', $tokensUsed = 0, $idCategory = null, $idManufacturer = null)
     {
-        return Db::getInstance()->insert('mlcategoryai_generation_log', [
-            'id_category' => (int) $idCategory,
+        $data = [
+            'entity_type' => pSQL($entityType),
             'id_lang' => (int) $idLang,
             'id_shop' => (int) $this->idShop,
             'field_type' => pSQL($fieldType),
             'generated_at' => date('Y-m-d H:i:s'),
             'model_used' => pSQL($this->client->getModel()),
-            'prompt_hash' => '', // Could add prompt hash for tracking changes
+            'prompt_hash' => '',
             'tokens_used' => (int) $tokensUsed,
             'status' => pSQL($status),
             'error_message' => pSQL($errorMessage),
-        ]);
+        ];
+        if ($idCategory !== null && (int) $idCategory > 0) {
+            $data['id_category'] = (int) $idCategory;
+        }
+        if ($idManufacturer !== null && (int) $idManufacturer > 0) {
+            $data['id_manufacturer'] = (int) $idManufacturer;
+        }
+
+        return Db::getInstance()->insert('mlcategoryai_generation_log', $data);
+    }
+
+    /**
+     * Log generation for a category (wrapper).
+     *
+     * @param int $idCategory
+     * @param int $idLang
+     * @param string $fieldType
+     * @param string $status
+     * @param string $errorMessage
+     * @param int $tokensUsed
+     *
+     * @return bool
+     */
+    protected function logGeneration($idCategory, $idLang, $fieldType, $status, $errorMessage = '', $tokensUsed = 0)
+    {
+        return $this->logGenerationEntry(
+            Mlcategoryaidescription::ENTITY_CATEGORY,
+            $idLang,
+            $fieldType,
+            $status,
+            $errorMessage,
+            $tokensUsed,
+            $idCategory,
+            null
+        );
     }
 
     /**
